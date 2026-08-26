@@ -142,7 +142,7 @@ export function ChatPanel() {
             {messages.map((message) => (
               <article key={message.id} className="flex flex-col gap-1.5">
                 <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-                  {message.role === "user" ? "You" : "Architect"}
+                  {message.role === "user" ? "You" : "OpenArchitect"}
                 </p>
                 {message.parts.map((part, index) => {
                   if (part.type === "text" && part.text.trim()) {

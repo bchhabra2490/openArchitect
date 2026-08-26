@@ -1,10 +1,21 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { UIMessage } from "ai";
-import { commandAddFurniture, commandAddOpening, commandRemoveFurniture, commandRemoveOpening } from "@/lib/floor-plan/commands";
+import {
+  commandAddFurniture,
+  commandAddOpening,
+  commandAddRoom,
+  commandRemoveFurniture,
+  commandRemoveOpening,
+  commandRemoveRoom,
+  commandSetPlot,
+  commandUpdateRoom,
+} from "@/lib/floor-plan/commands";
 import { emptyBrief, emptyPlan, nearestBlockSize, normalizePlan } from "@/lib/floor-plan/defaults";
 import {
   defaultOpeningWidth,
+  defaultRoomFootprint,
+  findFreeRoomPlacement,
   moveFurniture,
   moveOpening,
   moveRoom,
@@ -27,6 +38,7 @@ import type {
   FloorPlan,
   OpeningKind,
   PlanExport,
+  RoomType,
   StudioClipboard,
 } from "@/lib/floor-plan/types";
 import { isDisplayLayers } from "@/lib/floor-plan/layers";
@@ -83,6 +95,10 @@ type StudioState = {
   resizeWall: (roomId: string, edge: Edge, position: number) => void;
   moveSelectedRoom: (x: number, y: number, roomId?: string) => void;
   renameSelectedRoom: (name: string) => void;
+  resizeSelectedRoom: (width: number, height: number) => void;
+  removeSelectedRoom: () => void;
+  setPlot: (width: number, height: number) => void;
+  addRoom: (type: RoomType) => void;
   addFurnitureInRoom: (roomId: string, kind: string) => void;
   replaceSelectedFurniture: (kind: string) => void;
   moveSelectedFurniture: (x: number, y: number) => void;
@@ -253,6 +269,62 @@ export const useStudioStore = create<StudioState>()(
         const id = get().selectedRoomId;
         if (!id) return;
         set(commitPlan(get, renameRoom(get().plan, id, name), {}, { coalesce: true }));
+      },
+      resizeSelectedRoom: (width, height) => {
+        const id = get().selectedRoomId;
+        if (!id) return;
+        const { brief, plan } = get();
+        const room = plan.rooms.find((entry) => entry.id === id);
+        if (!room) return;
+        const result = commandUpdateRoom(brief, plan, {
+          id,
+          width: Math.min(width, Math.max(plan.gridSize, plan.plot.width - room.x)),
+          height: Math.min(height, Math.max(plan.gridSize, plan.plot.height - room.y)),
+        });
+        set(commitPlan(get, result.plan, { brief: result.brief }));
+      },
+      removeSelectedRoom: () => {
+        const id = get().selectedRoomId;
+        if (!id) return;
+        const { brief, plan } = get();
+        const result = commandRemoveRoom(brief, plan, id);
+        set(
+          commitPlan(get, result.plan, {
+            brief: result.brief,
+            selectedRoomId: null,
+            selectedFurnitureId: null,
+            selectedOpeningId: null,
+          }),
+        );
+      },
+      setPlot: (width, height) => {
+        const { brief, plan } = get();
+        const result = commandSetPlot(brief, plan, { width, height });
+        set(commitPlan(get, result.plan, { brief: result.brief }));
+      },
+      addRoom: (type) => {
+        const { brief, plan } = get();
+        const footprint = defaultRoomFootprint(type);
+        const placement = findFreeRoomPlacement(plan, footprint.width, footprint.height);
+        const existing = new Set(plan.rooms.map((room) => room.id));
+        const result = commandAddRoom(brief, plan, {
+          name: footprint.name,
+          type,
+          x: placement.x,
+          y: placement.y,
+          width: footprint.width,
+          height: footprint.height,
+        });
+        const added = result.plan.rooms.find((room) => !existing.has(room.id));
+        set(
+          commitPlan(get, result.plan, {
+            brief: result.brief,
+            selectedRoomId: added?.id ?? null,
+            selectedFurnitureId: null,
+            selectedOpeningId: null,
+            placingOpeningKind: null,
+          }),
+        );
       },
       addFurnitureInRoom: (roomId, kind) => {
         const { brief, plan } = get();

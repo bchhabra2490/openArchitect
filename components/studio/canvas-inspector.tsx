@@ -4,15 +4,34 @@ import { Copy, Layers2, Redo2, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FURNITURE_CATALOG } from "@/lib/floor-plan/furniture-catalog";
-import type { OpeningKind } from "@/lib/floor-plan/types";
+import { ROOM_TYPES, type OpeningKind, type RoomType } from "@/lib/floor-plan/types";
 import {
   displayToMeters,
   formatLength,
   formatMeasure,
-  formatSize,
   type DisplayUnit,
 } from "@/lib/floor-plan/units";
 import { useStudioStore } from "@/lib/store/use-studio-store";
+
+const ADD_ROOM_TYPES: RoomType[] = [
+  "living",
+  "bedroom",
+  "bathroom",
+  "kitchen",
+  "dining",
+  "hallway",
+  "office",
+  "closet",
+  "laundry",
+  "balcony",
+  "porch",
+  "stairs",
+  "other",
+];
+
+function roomLabel(type: RoomType) {
+  return type.charAt(0).toUpperCase() + type.slice(1);
+}
 
 function MeasureField({
   id,
@@ -116,6 +135,54 @@ function ClipboardButtons() {
   );
 }
 
+function PlotSizeFields() {
+  const plan = useStudioStore((state) => state.plan);
+  const displayUnit = useStudioStore((state) => state.displayUnit);
+  const setPlot = useStudioStore((state) => state.setPlot);
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-[11px] font-medium text-muted-foreground">Plot</span>
+      <MeasureField
+        id="plot-w"
+        label="W"
+        meters={plan.plot.width}
+        unit={displayUnit}
+        onCommit={(width) => setPlot(width, plan.plot.height)}
+      />
+      <MeasureField
+        id="plot-h"
+        label="H"
+        meters={plan.plot.height}
+        unit={displayUnit}
+        onCommit={(height) => setPlot(plan.plot.width, height)}
+      />
+    </div>
+  );
+}
+
+function AddRoomButtons() {
+  const addRoom = useStudioStore((state) => state.addRoom);
+  return (
+    <div className="mt-2">
+      <p className="text-[11px] font-medium text-muted-foreground">Add room</p>
+      <div className="mt-1 flex flex-wrap gap-1">
+        {ADD_ROOM_TYPES.filter((type) => ROOM_TYPES.includes(type)).map((type) => (
+          <Button
+            key={type}
+            type="button"
+            size="xs"
+            variant="outline"
+            onClick={() => addRoom(type)}
+          >
+            {roomLabel(type)}
+          </Button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function CanvasInspector() {
   const plan = useStudioStore((state) => state.plan);
   const displayUnit = useStudioStore((state) => state.displayUnit);
@@ -141,6 +208,8 @@ export function CanvasInspector() {
   const removeSelectedOpening = useStudioStore((state) => state.removeSelectedOpening);
   const setPlacingOpeningKind = useStudioStore((state) => state.setPlacingOpeningKind);
   const renameSelectedRoom = useStudioStore((state) => state.renameSelectedRoom);
+  const resizeSelectedRoom = useStudioStore((state) => state.resizeSelectedRoom);
+  const removeSelectedRoom = useStudioStore((state) => state.removeSelectedRoom);
   const addFurnitureInRoom = useStudioStore((state) => state.addFurnitureInRoom);
   const setSelectedFurnitureId = useStudioStore((state) => state.setSelectedFurnitureId);
   const setSelectedOpeningId = useStudioStore((state) => state.setSelectedOpeningId);
@@ -304,9 +373,24 @@ export function CanvasInspector() {
           placeholder="Room name"
         />
         <p className="mt-1 text-[11px] text-muted-foreground">
-          {formatSize(room.width, room.height, displayUnit)} · drag room to move · walls to
-          resize
+          Drag room to move · walls to resize · ⌘Z undo
         </p>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <MeasureField
+            id={`${room.id}-w`}
+            label="W"
+            meters={room.width}
+            unit={displayUnit}
+            onCommit={(width) => resizeSelectedRoom(width, room.height)}
+          />
+          <MeasureField
+            id={`${room.id}-h`}
+            label="H"
+            meters={room.height}
+            unit={displayUnit}
+            onCommit={(height) => resizeSelectedRoom(room.width, height)}
+          />
+        </div>
         {roomFurniture.length + roomOpenings.length > 0 ? (
           <div className="mt-2 flex flex-wrap gap-1">
             {roomFurniture.map((item) => (
@@ -359,6 +443,18 @@ export function CanvasInspector() {
               {preset.name}
             </Button>
           ))}
+          <Button
+            type="button"
+            size="xs"
+            variant="destructive"
+            onClick={() => removeSelectedRoom()}
+          >
+            Remove room
+          </Button>
+        </div>
+        <div className="mt-3 border-t pt-2">
+          <PlotSizeFields />
+          <AddRoomButtons />
         </div>
       </div>
     );
@@ -366,11 +462,14 @@ export function CanvasInspector() {
 
   if (plan.rooms.length > 0) {
     return (
-      <div className="pointer-events-auto rounded-xl border bg-background/95 p-3 shadow-sm">
+      <div className="pointer-events-auto max-w-xl rounded-xl border bg-background/95 p-3 shadow-sm">
         <p className="text-xs text-muted-foreground">
           Click a room to rename or furnish it. Drag a room to move it. ⌘Z undo · ⌘⇧Z redo ·
           ⌘C / ⌘V copy.
         </p>
+        <div className="mt-2">
+          <PlotSizeFields />
+        </div>
         <div className="mt-2 flex flex-wrap gap-1">
           <HistoryButtons />
           <Button type="button" size="xs" variant="outline" onClick={() => placeKind("door")}>
@@ -394,13 +493,23 @@ export function CanvasInspector() {
             Paste
           </Button>
         </div>
+        <AddRoomButtons />
       </div>
     );
   }
 
   return (
-    <p className="rounded-xl bg-background/80 px-3 py-2 text-xs text-muted-foreground">
-      Click a room and drag it to move. Click objects to copy, rename, or resize them.
-    </p>
+    <div className="pointer-events-auto max-w-xl rounded-xl border bg-background/95 p-3 shadow-sm">
+      <p className="text-xs text-muted-foreground">
+        Set the plot size, add rooms, or ask the agent to draft a layout.
+      </p>
+      <div className="mt-2">
+        <PlotSizeFields />
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1">
+        <HistoryButtons />
+      </div>
+      <AddRoomButtons />
+    </div>
   );
 }

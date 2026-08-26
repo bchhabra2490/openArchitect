@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Floor Plan Architect",
+  title: "OpenArchitect",
   description:
-    "Describe a home. An agent asks follow-ups, then draws a schematic floor plan on a live canvas. The same tools are exposed to browser agents via WebMCP.",
+    "OpenArchitect — describe a home. An agent asks follow-ups, then draws a schematic floor plan on a live canvas. The same tools are exposed to browser agents via WebMCP.",
 };
 
 export default function RootLayout({

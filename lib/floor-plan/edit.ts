@@ -1,7 +1,7 @@
 import { snap } from "./defaults";
 import { DOOR_MIN_WIDTH, ROOM_MINIMA, sharedEdgeLength } from "./design-rules";
 import { furniturePreset } from "./furniture-catalog";
-import type { Edge, FloorPlan, FurnitureItem, Opening, Room } from "./types";
+import type { Edge, FloorPlan, FurnitureItem, Opening, Room, RoomType } from "./types";
 
 const EPS = 0.02;
 const TOUCH = 0.45;
@@ -352,4 +352,68 @@ export function placeFurnitureInRoom(
     }
   }
   return { x: snap(clamp(x, 0, maxX), grid), y: snap(clamp(y, 0, maxY), grid), width, height };
+}
+
+const DEFAULT_ROOM_FOOTPRINT: Record<
+  RoomType,
+  { width: number; height: number; name: string }
+> = {
+  bedroom: { width: 3.5, height: 3, name: "Bedroom" },
+  bathroom: { width: 1.5, height: 2, name: "Bathroom" },
+  kitchen: { width: 2.5, height: 2.5, name: "Kitchen" },
+  living: { width: 4, height: 3.5, name: "Living" },
+  dining: { width: 3, height: 3, name: "Dining" },
+  hallway: { width: 1.2, height: 3, name: "Hallway" },
+  closet: { width: 1.5, height: 1, name: "Closet" },
+  balcony: { width: 2, height: 1.5, name: "Balcony" },
+  office: { width: 3, height: 2.5, name: "Office" },
+  laundry: { width: 1.5, height: 1.5, name: "Laundry" },
+  stairs: { width: 2, height: 2.5, name: "Stairs" },
+  porch: { width: 2, height: 1.5, name: "Porch" },
+  other: { width: 2.5, height: 2, name: "Room" },
+};
+
+export function defaultRoomFootprint(type: RoomType) {
+  return DEFAULT_ROOM_FOOTPRINT[type];
+}
+
+function roomRectsOverlap(
+  a: { x: number; y: number; width: number; height: number },
+  b: { x: number; y: number; width: number; height: number },
+) {
+  return (
+    a.x < b.x + b.width - EPS &&
+    a.x + a.width > b.x + EPS &&
+    a.y < b.y + b.height - EPS &&
+    a.y + a.height > b.y + EPS
+  );
+}
+
+/** First free grid slot that fits; falls back to top-left if the plot is full. */
+export function findFreeRoomPlacement(
+  plan: FloorPlan,
+  width: number,
+  height: number,
+): { x: number; y: number } {
+  const grid = plan.gridSize || 0.5;
+  const w = snap(Math.max(width, grid), grid);
+  const h = snap(Math.max(height, grid), grid);
+  const maxX = plan.plot.width - w;
+  const maxY = plan.plot.height - h;
+  if (maxX < -EPS || maxY < -EPS) {
+    return { x: 0, y: 0 };
+  }
+
+  for (let y = 0; y <= maxY + EPS; y = snap(y + grid, grid)) {
+    for (let x = 0; x <= maxX + EPS; x = snap(x + grid, grid)) {
+      const sx = snap(clamp(x, 0, maxX), grid);
+      const sy = snap(clamp(y, 0, maxY), grid);
+      const candidate = { x: sx, y: sy, width: w, height: h };
+      if (!plan.rooms.some((room) => roomRectsOverlap(candidate, room))) {
+        return { x: sx, y: sy };
+      }
+    }
+  }
+
+  return { x: 0, y: 0 };
 }

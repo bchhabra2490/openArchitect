@@ -1,4 +1,4 @@
-# Floor Plan Architect
+# OpenArchitect
 
 A WebMCP studio where a person and an agent design a home together on the same live canvas.
 

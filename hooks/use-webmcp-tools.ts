@@ -48,6 +48,8 @@ export function useWebMcpTools() {
         return modelContext.registerTool(tool, { signal: controller.signal });
       }),
     ).catch((error: unknown) => {
+      if (controller.signal.aborted) return;
+      if (error instanceof DOMException && error.name === "AbortError") return;
       console.warn("WebMCP tool registration failed", error);
       setWebmcpStatus("unavailable");
     });
