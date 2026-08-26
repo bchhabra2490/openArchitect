@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Floor Plan Architect
 
-## Getting Started
+A WebMCP studio where a person and an agent design a home together on the same live canvas.
 
-First, run the development server:
+Describe a house. The agent asks a few clarifying questions, then draws **three alternative schematic floor plans**. You compare them, drag walls and furniture, export PNG/PDF, and open a 3D dollhouse. ChatGPT (or Chrome with WebMCP) can call the same canvas commands as site tools — it does not have to click through the UI.
+
+Built for the [OpenAI WebMCP Challenge](https://openai.com/webmcp-challenge/).
+
+## For judges
+
+1. Open the live URL in **ChatGPT’s in-app browser** (WebMCP is on by default) or in **Chrome 149+** with `chrome://flags/#enable-webmcp-testing` enabled.
+2. Confirm the header badge reads **WebMCP on**.
+3. In ChatGPT, look for **Site tools** in the address bar. You should see tools such as `get_brief`, `apply_layout`, `switch_design`, and `generate_3d`.
+4. Ask: *“3BHK, about 1200 sqft, open kitchen. Draw three alternative layouts, then open 3D.”*
+5. Watch rooms appear on the canvas. Switch **Design 1 / 2 / 3**. Orbit the 3D view.
+
+The in-app chat on the left is a fallback (needs `OPENAI_API_KEY` on the host). Judges do not need that key if they use ChatGPT site tools.
+
+## WebMCP implementation
+
+On load, the page registers every canvas command with the browser:
+
+```js
+document.modelContext.registerTool({
+  name: "apply_layout",
+  description: "Replace rooms, openings, furniture, and the frontage street for one of three design slots.",
+  inputSchema: { /* JSON Schema from Zod */ },
+  execute: async (input) => {
+    return executeStudioTool("apply_layout", input);
+  },
+});
+```
+
+Registration lives in [`hooks/use-webmcp-tools.ts`](hooks/use-webmcp-tools.ts). Handlers run in the tab against Zustand + `localStorage`, so the person sees every agent edit immediately.
+
+The same command layer (`lib/floor-plan/commands.ts`) powers:
+
+- ChatGPT / Chrome **site tools** (WebMCP)
+- The optional in-app architect chat (`/api/chat`)
+
+People keep a normal interface: pan/zoom canvas, inspector, layer toggles, export, 3D. Agents get structured tools instead of screenshot-clicking.
+
+## Local setup
+
+```bash
+npm install
+cp .env.example .env.local
+```
+
+Set `OPENAI_API_KEY` only if you want the left-hand chat. WebMCP tools work without it.
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run dev
+npm run build
+npm run lint
+```
 
-## Learn More
+## License
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+[MIT](LICENSE)
