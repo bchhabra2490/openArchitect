@@ -10,7 +10,7 @@ Built for the [OpenAI WebMCP Challenge](https://openai.com/webmcp-challenge/).
 
 1. Open the live URL in **ChatGPT’s in-app browser** (WebMCP is on by default) or in **Chrome 149+** with `chrome://flags/#enable-webmcp-testing` enabled.
 2. Confirm the header badge reads **WebMCP on**.
-3. In ChatGPT, look for **Site tools** in the address bar. You should see tools such as `get_brief`, `apply_layout`, and `generate_3d`.
+3. In ChatGPT, look for **Site tools** in the address bar. You should see tools such as `get_brief`, `get_standards_check`, `apply_layout`, and `generate_3d`.
 4. Ask: *“3BHK, about 1200 sqft, open kitchen. Draw a layout, then open 3D.”*
 5. Watch rooms appear on the canvas. Orbit the 3D view.
 

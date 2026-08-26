@@ -217,9 +217,17 @@ export const floorPlanSchema = z.object({
   furniture: z.array(furnitureInputSchema.extend({ id: z.string().min(1) })),
 });
 
+export const importProjectInputSchema = z.object({
+  version: z.literal(1).optional(),
+  kind: z.literal("openarchitect").optional(),
+  brief: briefSchema.optional(),
+  plan: floorPlanSchema,
+});
+
 export const toolInputSchemas = {
   get_brief: emptyInputSchema,
   get_design_rules: emptyInputSchema,
+  get_standards_check: emptyInputSchema,
   update_brief: updateBriefInputSchema,
   ask_user: askUserInputSchema,
   get_floor_plan: emptyInputSchema,
@@ -241,6 +249,8 @@ export const toolInputSchemas = {
   resize_opening: resizeOpeningInputSchema,
   export_png: exportPlanInputSchema,
   export_pdf: exportPlanInputSchema,
+  export_project: exportPlanInputSchema,
+  import_project: importProjectInputSchema,
   generate_3d: exportPlanInputSchema,
 } as const;
 

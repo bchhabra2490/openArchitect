@@ -8,6 +8,8 @@ import {
   commandGenerate3d,
   commandGetBrief,
   commandGetFloorPlan,
+  commandGetStandardsCheck,
+  commandImportProject,
   commandMoveFurniture,
   commandMoveOpening,
   commandRemoveFurniture,
@@ -23,6 +25,8 @@ import {
   commandUpdateRoom,
 } from "@/lib/floor-plan/commands";
 import { DESIGN_RULES_FOR_AGENTS, DESIGN_RULES_REFERENCE } from "@/lib/floor-plan/design-rules";
+import { emptyBrief } from "@/lib/floor-plan/defaults";
+import { parseProjectFile } from "@/lib/floor-plan/project-file";
 import { toolInputSchemas, type ToolName } from "@/lib/floor-plan/schema";
 import type { CommandResult } from "@/lib/floor-plan/types";
 import { useStudioStore } from "@/lib/store/use-studio-store";
@@ -77,6 +81,10 @@ export async function executeStudioTool(
     case "get_floor_plan":
       parse(toolInputSchemas.get_floor_plan, rawInput);
       result = commandGetFloorPlan(state.brief, state.plan);
+      break;
+    case "get_standards_check":
+      parse(toolInputSchemas.get_standards_check, rawInput);
+      result = commandGetStandardsCheck(state.brief, state.plan);
       break;
     case "set_plot":
       result = commandSetPlot(
@@ -206,6 +214,25 @@ export async function executeStudioTool(
         parse(toolInputSchemas.export_pdf, rawInput).filename,
       );
       break;
+    case "export_project":
+      result = commandExportPlan(
+        state.brief,
+        state.plan,
+        "json",
+        parse(toolInputSchemas.export_project, rawInput).filename,
+      );
+      break;
+    case "import_project": {
+      const input = parse(toolInputSchemas.import_project, rawInput);
+      const parsed = parseProjectFile({
+        version: input.version ?? 1,
+        kind: input.kind ?? "openarchitect",
+        brief: input.brief ?? emptyBrief(),
+        plan: input.plan,
+      });
+      result = commandImportProject(state.brief, state.plan, parsed);
+      break;
+    }
     case "generate_3d":
       result = commandGenerate3d(
         state.brief,

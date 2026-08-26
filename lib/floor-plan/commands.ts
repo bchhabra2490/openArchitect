@@ -526,14 +526,29 @@ export function commandGetFloorPlan(brief: Brief, plan: FloorPlan): CommandResul
   );
 }
 
+export function commandGetStandardsCheck(brief: Brief, plan: FloorPlan): CommandResult {
+  const issues = validatePlan(plan, brief).filter((issue) => issue.code !== "empty_plan");
+  const errors = issues.filter((issue) => issue.severity === "error").length;
+  const warnings = issues.length - errors;
+  return {
+    brief: cloneBrief(brief),
+    plan: clonePlan(plan),
+    issues,
+    summary:
+      issues.length === 0
+        ? "Standards check passed — no issues."
+        : `Standards check: ${errors} error(s), ${warnings} warning(s).`,
+  };
+}
+
 export function commandExportPlan(
   brief: Brief,
   plan: FloorPlan,
-  format: ExportFormat,
+  format: ExportFormat | "json",
   filename?: string,
 ): CommandResult {
   const snapshot = result(brief, plan, "");
-  if (plan.rooms.length === 0) {
+  if (format !== "json" && plan.rooms.length === 0) {
     return {
       ...snapshot,
       summary: "Nothing to export yet — draw a layout first.",
@@ -548,6 +563,18 @@ export function commandExportPlan(
     exportFile: file,
     summary: `Ready to download ${file.filename}.`,
   };
+}
+
+export function commandImportProject(
+  _brief: Brief,
+  _plan: FloorPlan,
+  input: { brief: Brief; plan: FloorPlan },
+): CommandResult {
+  return result(
+    input.brief,
+    input.plan,
+    `Imported project with ${input.plan.rooms.length} rooms.`,
+  );
 }
 
 export function commandGenerate3d(

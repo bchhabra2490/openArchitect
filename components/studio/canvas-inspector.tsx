@@ -1,6 +1,7 @@
 "use client";
 
-import { Copy, Layers2, Redo2, Undo2 } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { ChevronDown, Copy, Layers2, PanelBottom, Redo2, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FURNITURE_CATALOG } from "@/lib/floor-plan/furniture-catalog";
@@ -12,6 +13,7 @@ import {
   type DisplayUnit,
 } from "@/lib/floor-plan/units";
 import { useStudioStore } from "@/lib/store/use-studio-store";
+import { cn } from "@/lib/utils";
 
 const ADD_ROOM_TYPES: RoomType[] = [
   "living",
@@ -31,6 +33,46 @@ const ADD_ROOM_TYPES: RoomType[] = [
 
 function roomLabel(type: RoomType) {
   return type.charAt(0).toUpperCase() + type.slice(1);
+}
+
+function ControlsShell({ children }: { children: ReactNode }) {
+  const [minimized, setMinimized] = useState(false);
+
+  if (minimized) {
+    return (
+      <Button
+        type="button"
+        size="xs"
+        variant="outline"
+        className="pointer-events-auto rounded-xl border bg-background/95 shadow-sm"
+        onClick={() => setMinimized(false)}
+        title="Show controls"
+        aria-expanded={false}
+        aria-label="Show controls"
+      >
+        <PanelBottom data-icon="inline-start" />
+        Controls
+      </Button>
+    );
+  }
+
+  return (
+    <div className="pointer-events-auto relative max-w-xl">
+      <Button
+        type="button"
+        size="icon-sm"
+        variant="ghost"
+        className="absolute top-1.5 right-1.5 z-10 text-muted-foreground"
+        onClick={() => setMinimized(true)}
+        title="Minimize controls"
+        aria-label="Minimize controls"
+        aria-expanded={true}
+      >
+        <ChevronDown />
+      </Button>
+      <div className="[&>[data-controls-panel]]:pr-9">{children}</div>
+    </div>
+  );
 }
 
 function MeasureField({
@@ -183,6 +225,8 @@ function AddRoomButtons() {
   );
 }
 
+const panelClass = "rounded-xl border bg-background/95 p-3 shadow-sm";
+
 export function CanvasInspector() {
   const plan = useStudioStore((state) => state.plan);
   const displayUnit = useStudioStore((state) => state.displayUnit);
@@ -224,9 +268,11 @@ export function CanvasInspector() {
     setPlacingOpeningKind(placingOpeningKind === kind ? null : kind);
   }
 
+  let body: ReactNode;
+
   if (furniture) {
-    return (
-      <div className="pointer-events-auto max-w-xl rounded-xl border bg-background/95 p-3 shadow-sm">
+    body = (
+      <div data-controls-panel className={cn(panelClass, "max-w-xl")}>
         <Input
           className="h-7 text-xs font-medium"
           value={furniture.name}
@@ -280,11 +326,9 @@ export function CanvasInspector() {
         </div>
       </div>
     );
-  }
-
-  if (opening) {
-    return (
-      <div className="pointer-events-auto rounded-xl border bg-background/95 p-3 shadow-sm">
+  } else if (opening) {
+    body = (
+      <div data-controls-panel className={panelClass}>
         <p className="text-xs font-medium">
           {opening.kind} ({formatLength(opening.width, displayUnit)})
           <span className="ml-1 font-normal text-muted-foreground">
@@ -321,11 +365,9 @@ export function CanvasInspector() {
         </div>
       </div>
     );
-  }
-
-  if (placingOpeningKind) {
-    return (
-      <div className="pointer-events-auto rounded-xl border bg-background/95 p-3 shadow-sm">
+  } else if (placingOpeningKind) {
+    body = (
+      <div data-controls-panel className={panelClass}>
         <p className="text-xs font-medium">
           Click a wall to place a {placingOpeningKind}
           <span className="ml-1 font-normal text-muted-foreground">· Esc to cancel</span>
@@ -358,13 +400,11 @@ export function CanvasInspector() {
         </div>
       </div>
     );
-  }
-
-  if (room) {
+  } else if (room) {
     const roomFurniture = plan.furniture.filter((item) => item.roomId === room.id);
     const roomOpenings = plan.openings.filter((item) => item.roomId === room.id);
-    return (
-      <div className="pointer-events-auto max-w-xl rounded-xl border bg-background/95 p-3 shadow-sm">
+    body = (
+      <div data-controls-panel className={cn(panelClass, "max-w-xl")}>
         <Input
           className="h-7 text-xs font-medium"
           value={room.name}
@@ -458,11 +498,9 @@ export function CanvasInspector() {
         </div>
       </div>
     );
-  }
-
-  if (plan.rooms.length > 0) {
-    return (
-      <div className="pointer-events-auto max-w-xl rounded-xl border bg-background/95 p-3 shadow-sm">
+  } else if (plan.rooms.length > 0) {
+    body = (
+      <div data-controls-panel className={cn(panelClass, "max-w-xl")}>
         <p className="text-xs text-muted-foreground">
           Click a room to rename or furnish it. Drag a room to move it. ⌘Z undo · ⌘⇧Z redo ·
           ⌘C / ⌘V copy.
@@ -496,20 +534,22 @@ export function CanvasInspector() {
         <AddRoomButtons />
       </div>
     );
+  } else {
+    body = (
+      <div data-controls-panel className={cn(panelClass, "max-w-xl")}>
+        <p className="text-xs text-muted-foreground">
+          Set the plot size, add rooms, or ask the agent to draft a layout.
+        </p>
+        <div className="mt-2">
+          <PlotSizeFields />
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1">
+          <HistoryButtons />
+        </div>
+        <AddRoomButtons />
+      </div>
+    );
   }
 
-  return (
-    <div className="pointer-events-auto max-w-xl rounded-xl border bg-background/95 p-3 shadow-sm">
-      <p className="text-xs text-muted-foreground">
-        Set the plot size, add rooms, or ask the agent to draft a layout.
-      </p>
-      <div className="mt-2">
-        <PlotSizeFields />
-      </div>
-      <div className="mt-2 flex flex-wrap gap-1">
-        <HistoryButtons />
-      </div>
-      <AddRoomButtons />
-    </div>
-  );
+  return <ControlsShell>{body}</ControlsShell>;
 }

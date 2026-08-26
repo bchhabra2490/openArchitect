@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
   type PointerEvent,
-  type WheelEvent,
+  type RefObject,
 } from "react";
 
 export const MIN_SCALE = 8;
@@ -29,7 +29,10 @@ export function centeredOffset(
   };
 }
 
-export function useCanvasPanZoom(initialScale = DEFAULT_SCALE) {
+export function useCanvasPanZoom(
+  viewportRef: RefObject<HTMLElement | null>,
+  initialScale = DEFAULT_SCALE,
+) {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [scale, setScale] = useState(initialScale);
   const scaleRef = useRef(initialScale);
@@ -73,10 +76,14 @@ export function useCanvasPanZoom(initialScale = DEFAULT_SCALE) {
     });
   }, []);
 
-  const onWheel = useCallback(
-    (event: WheelEvent<HTMLDivElement>) => {
+  useEffect(() => {
+    const node = viewportRef.current;
+    if (!node) return;
+    const target = node;
+
+    function onWheel(event: WheelEvent) {
       event.preventDefault();
-      const rect = event.currentTarget.getBoundingClientRect();
+      const rect = target.getBoundingClientRect();
       const px = event.clientX - rect.left;
       const py = event.clientY - rect.top;
       const factor = event.deltaY < 0 ? 1.08 : 1 / 1.08;
@@ -88,9 +95,11 @@ export function useCanvasPanZoom(initialScale = DEFAULT_SCALE) {
         }));
         return next;
       });
-    },
-    [],
-  );
+    }
+
+    target.addEventListener("wheel", onWheel, { passive: false });
+    return () => target.removeEventListener("wheel", onWheel);
+  }, [viewportRef]);
 
   const onPointerDown = useCallback(
     (event: PointerEvent<HTMLDivElement>) => {
@@ -125,7 +134,6 @@ export function useCanvasPanZoom(initialScale = DEFAULT_SCALE) {
     scale,
     zoomTo,
     centerView,
-    onWheel,
     onPointerDown,
     onPointerMove,
     onPointerUp,

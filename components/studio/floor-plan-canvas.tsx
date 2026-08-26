@@ -939,8 +939,8 @@ export function FloorPlanCanvas() {
   const selectedOpeningId = useStudioStore((state) => state.selectedOpeningId);
   const placingOpeningKind = useStudioStore((state) => state.placingOpeningKind);
   const viewportRef = useRef<HTMLDivElement>(null);
-  const { offset, scale, centerView, onWheel, onPointerDown, onPointerMove, onPointerUp } =
-    useCanvasPanZoom();
+  const { offset, scale, centerView, onPointerDown, onPointerMove, onPointerUp } =
+    useCanvasPanZoom(viewportRef);
   const { vbWidth, vbHeight } = planViewBox(plan);
 
   const centerGrid = useCallback(() => {
@@ -1036,7 +1036,6 @@ export function FloorPlanCanvas() {
       <div
         ref={viewportRef}
         className={cn("min-h-0 flex-1 cursor-grab overflow-hidden active:cursor-grabbing")}
-        onWheel={onWheel}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -1066,18 +1065,6 @@ export function FloorPlanCanvas() {
       ) : null}
       <div className="pointer-events-none absolute top-3 left-3 flex flex-col items-start gap-2">
         <BlockSizeSlider />
-        <Button
-          type="button"
-          size="xs"
-          variant="outline"
-          className="pointer-events-auto rounded-xl border bg-background/95 shadow-sm"
-          aria-label="Center grid in the canvas"
-          title="Center grid"
-          onClick={centerGrid}
-        >
-          <Scan data-icon="inline-start" />
-          Center
-        </Button>
         <LayerToggles className="pointer-events-auto rounded-xl bg-background/95 px-2 py-1.5 shadow-sm" />
       </div>
       <div className="pointer-events-none absolute top-3 right-3">
@@ -1085,11 +1072,25 @@ export function FloorPlanCanvas() {
       </div>
       <div className="absolute right-3 bottom-3 left-3 flex items-end justify-between gap-3">
         <CanvasInspector />
-        {plan.rooms.length > 0 ? (
-          <p className="hidden rounded-xl bg-background/80 px-3 py-2 text-xs text-muted-foreground sm:block">
-            Scroll to zoom · drag rooms to move · ⌘Z undo · ⌘⇧Z redo · ⌘C / ⌘V copy
-          </p>
-        ) : null}
+        <div className="flex flex-col items-end gap-2">
+          {plan.rooms.length > 0 ? (
+            <p className="hidden rounded-xl bg-background/80 px-3 py-2 text-xs text-muted-foreground sm:block">
+              Scroll to zoom · drag rooms to move · ⌘Z undo · ⌘⇧Z redo · ⌘C / ⌘V copy
+            </p>
+          ) : null}
+          <Button
+            type="button"
+            size="xs"
+            variant="outline"
+            className="pointer-events-auto rounded-xl border bg-background/95 shadow-sm"
+            aria-label="Center grid in the canvas"
+            title="Center grid"
+            onClick={centerGrid}
+          >
+            <Scan data-icon="inline-start" />
+            Center
+          </Button>
+        </div>
       </div>
     </div>
   );

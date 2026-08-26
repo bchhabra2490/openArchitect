@@ -126,6 +126,7 @@ type StudioState = {
   ) => Promise<Record<string, string>>;
   submitAnswers: (answers: Record<string, string>) => void;
   setWebmcpStatus: (status: WebMcpStatus) => void;
+  importProject: (brief: Brief, plan: FloorPlan) => void;
   reset: () => void;
 };
 
@@ -694,6 +695,22 @@ export const useStudioStore = create<StudioState>()(
         waiter = null;
       },
       setWebmcpStatus: (status) => set({ webmcpStatus: status }),
+      importProject: (brief, plan) => {
+        const nextPlan = normalizePlan(plan);
+        set(
+          commitPlan(get, nextPlan, {
+            brief,
+            selectedRoomId: null,
+            selectedFurnitureId: null,
+            selectedOpeningId: null,
+            placingOpeningKind: null,
+            clipboard: null,
+            pendingQuestions: null,
+            questionSource: null,
+            future: [],
+          }),
+        );
+      },
       reset: () => {
         waiter?.reject(new Error("Studio reset."));
         waiter = null;

@@ -130,7 +130,18 @@ export function ChatPanel({ chatEnabled = false }: { chatEnabled?: boolean }) {
     <div className="flex h-full min-h-0 flex-col gap-3">
       <RequirementsCard />
       <DesignRulesCard />
-      <DesignIssuesCard />
+      <DesignIssuesCard
+        chatEnabled={chatEnabled}
+        busy={busy}
+        onFix={(issues) => {
+          const list = issues
+            .map((issue) => `- [${issue.severity}] ${issue.message}`)
+            .join("\n");
+          void sendMessage({
+            text: `The standards check is failing. Call get_standards_check, then fix every issue below with incremental tools (resize_wall, update_room, add_opening, move_opening, etc.). Prefer targeted fixes over apply_layout unless the plan is badly broken. Re-check with get_standards_check when done.\n\nIssues:\n${list}`,
+          });
+        }}
+      />
       <SidebarSection title="Chat" grow>
         <ScrollArea className="min-h-0 flex-1">
           <div className="flex flex-col gap-3 pr-2">

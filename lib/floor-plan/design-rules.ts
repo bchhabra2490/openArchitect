@@ -113,7 +113,7 @@ Furniture (schematic)
 - Queen bed ~2.1 × 1.6 m; sofa ~2.2 × 0.9 m; dining table ~1.5 × 0.9 m; kitchen counter depth 0.6 m.
 - Keep furniture inside the room with 0.5 m+ circulation where people walk.
 
-After drawing, call get_floor_plan and fix every design error and warning you can.`;
+After drawing, call get_standards_check (or get_floor_plan) and fix every design error and warning you can.`;
 
 function area(room: Room) {
   return room.width * room.height;

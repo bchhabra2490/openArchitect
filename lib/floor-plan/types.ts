@@ -104,7 +104,7 @@ export const EXPORT_FORMATS = ["png", "pdf"] as const;
 export type ExportFormat = (typeof EXPORT_FORMATS)[number];
 
 export interface PlanExport {
-  format: ExportFormat;
+  format: ExportFormat | "json";
   filename: string;
 }
 

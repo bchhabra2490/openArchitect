@@ -1,4 +1,5 @@
 import { tool } from "ai";
+import { emptyBrief, normalizePlan } from "@/lib/floor-plan/defaults";
 import type { Brief, ClarifyingQuestion, FloorPlan } from "@/lib/floor-plan/types";
 import {
   commandAddFurniture,
@@ -9,6 +10,8 @@ import {
   commandGenerate3d,
   commandGetBrief,
   commandGetFloorPlan,
+  commandGetStandardsCheck,
+  commandImportProject,
   commandMoveFurniture,
   commandMoveOpening,
   commandRemoveFurniture,
@@ -84,6 +87,11 @@ export function createArchitectTools(ctx: StudioContext) {
       description: TOOL_DESCRIPTIONS.get_floor_plan,
       inputSchema: toolInputSchemas.get_floor_plan,
       execute: async () => commandGetFloorPlan(ctx.brief, ctx.plan),
+    }),
+    get_standards_check: tool({
+      description: TOOL_DESCRIPTIONS.get_standards_check,
+      inputSchema: toolInputSchemas.get_standards_check,
+      execute: async () => commandGetStandardsCheck(ctx.brief, ctx.plan),
     }),
     set_plot: tool({
       description: TOOL_DESCRIPTIONS.set_plot,
@@ -192,6 +200,34 @@ export function createArchitectTools(ctx: StudioContext) {
       inputSchema: toolInputSchemas.export_pdf,
       execute: async (input) =>
         commit(ctx, commandExportPlan(ctx.brief, ctx.plan, "pdf", input.filename)),
+    }),
+    export_project: tool({
+      description: TOOL_DESCRIPTIONS.export_project,
+      inputSchema: toolInputSchemas.export_project,
+      execute: async (input) =>
+        commit(ctx, commandExportPlan(ctx.brief, ctx.plan, "json", input.filename)),
+    }),
+    import_project: tool({
+      description: TOOL_DESCRIPTIONS.import_project,
+      inputSchema: toolInputSchemas.import_project,
+      execute: async (input) => {
+        const plan = normalizePlan({
+          units: "m",
+          gridSize: input.plan.gridSize,
+          plot: input.plan.plot,
+          street: input.plan.street ?? null,
+          rooms: input.plan.rooms,
+          openings: input.plan.openings,
+          furniture: input.plan.furniture,
+        });
+        return commit(
+          ctx,
+          commandImportProject(ctx.brief, ctx.plan, {
+            brief: input.brief ?? emptyBrief(),
+            plan,
+          }),
+        );
+      },
     }),
     generate_3d: tool({
       description: TOOL_DESCRIPTIONS.generate_3d,
