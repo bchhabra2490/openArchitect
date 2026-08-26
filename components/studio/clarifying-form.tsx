@@ -38,7 +38,7 @@ export function ClarifyingForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex max-h-56 flex-col gap-2">
+    <form onSubmit={handleSubmit} className="flex max-h-[min(24rem,60vh)] flex-col gap-3">
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
         {questions.map((question) => (
           <div key={question.id} className="flex flex-col gap-1">

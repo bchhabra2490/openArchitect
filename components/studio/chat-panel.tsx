@@ -7,7 +7,6 @@ import { Loader2, Mic, MicOff, SendHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
-import { ClarifyingForm } from "@/components/studio/clarifying-form";
 import { DesignIssuesCard } from "@/components/studio/design-issues-card";
 import { DesignRulesCard } from "@/components/studio/design-rules-card";
 import { RequirementsCard } from "@/components/studio/requirements-card";
@@ -48,8 +47,7 @@ function rememberedToolIds(messages: ArchitectUIMessage[]) {
 export function ChatPanel({ chatEnabled = false }: { chatEnabled?: boolean }) {
   const applyResult = useStudioStore((state) => state.applyResult);
   const setPendingQuestions = useStudioStore((state) => state.setPendingQuestions);
-  const pendingQuestions = useStudioStore((state) => state.pendingQuestions);
-  const questionSource = useStudioStore((state) => state.questionSource);
+  const setChatReplyHandler = useStudioStore((state) => state.setChatReplyHandler);
   const setChatMessages = useStudioStore((state) => state.setChatMessages);
   const restoredMessages = useStudioStore.getState().chatMessages as ArchitectUIMessage[];
   const applied = useRef(rememberedToolIds(restoredMessages));
@@ -89,6 +87,17 @@ export function ChatPanel({ chatEnabled = false }: { chatEnabled?: boolean }) {
   });
 
   const busy = chatEnabled && (status === "submitted" || status === "streaming");
+
+  useEffect(() => {
+    if (!chatEnabled) {
+      setChatReplyHandler(null);
+      return;
+    }
+    setChatReplyHandler((text) => {
+      void sendMessage({ text });
+    });
+    return () => setChatReplyHandler(null);
+  }, [chatEnabled, sendMessage, setChatReplyHandler]);
 
   useEffect(() => {
     setChatMessages(messages);
@@ -212,21 +221,6 @@ export function ChatPanel({ chatEnabled = false }: { chatEnabled?: boolean }) {
           </div>
         </ScrollArea>
       </SidebarSection>
-      {pendingQuestions?.length ? (
-        <SidebarSection title="Questions">
-          <ClarifyingForm
-            key={pendingQuestions.map((question) => question.id).join("-")}
-            questions={pendingQuestions}
-            onSubmitToChat={
-              chatEnabled && questionSource === "chat"
-                ? (text) => {
-                    void sendMessage({ text });
-                  }
-                : undefined
-            }
-          />
-        </SidebarSection>
-      ) : null}
       <SidebarSection title="Message" defaultOpen>
         {!chatEnabled ? (
           <p className="text-sm text-muted-foreground">

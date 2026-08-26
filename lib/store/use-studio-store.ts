@@ -123,6 +123,8 @@ type StudioState = {
     questions: ClarifyingQuestion[] | null,
     source?: QuestionSource,
   ) => void;
+  chatReplyHandler: ((text: string) => void) | null;
+  setChatReplyHandler: (handler: ((text: string) => void) | null) => void;
   waitForAnswers: (
     questions: ClarifyingQuestion[],
     signal?: AbortSignal,
@@ -172,6 +174,7 @@ export const useStudioStore = create<StudioState>()(
       historyGesture: false,
       pendingQuestions: null,
       questionSource: null,
+      chatReplyHandler: null,
       webmcpStatus: "unknown",
       pendingExport: null,
       view3dOpen: false,
@@ -660,6 +663,7 @@ export const useStudioStore = create<StudioState>()(
           pendingQuestions: questions,
           questionSource: questions ? source : null,
         }),
+      setChatReplyHandler: (handler) => set({ chatReplyHandler: handler }),
       waitForAnswers: (questions, signal) => {
         waiter?.reject(new Error("Replaced by a newer question set."));
         set({ pendingQuestions: questions, questionSource: "webmcp" });

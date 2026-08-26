@@ -5,6 +5,7 @@ import { PanelLeft, PanelLeftClose } from "lucide-react";
 import { FloorPlan3dViewer } from "@/components/studio/floor-plan-3d-viewer";
 import { FloorPlanCanvas } from "@/components/studio/floor-plan-canvas";
 import { ChatPanel } from "@/components/studio/chat-panel";
+import { ClarifyingQuestionsModal } from "@/components/studio/clarifying-questions-modal";
 import { UnitSelector } from "@/components/studio/unit-selector";
 import { WebMcpStatus } from "@/components/studio/webmcp-status";
 import { Button } from "@/components/ui/button";
@@ -114,6 +115,7 @@ export function StudioApp({ chatEnabled = false }: { chatEnabled?: boolean }) {
         <FloorPlanCanvas key={chatKey} />
       </div>
       <FloorPlan3dViewer />
+      <ClarifyingQuestionsModal />
     </div>
   );
 }
