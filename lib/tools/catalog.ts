@@ -42,7 +42,7 @@ export const TOOL_DESCRIPTIONS: Record<ToolName, string> = {
   update_brief:
     "Patch the project brief. Use this to store requirements from the conversation. If plotWidthM and plotHeightM are set, the canvas plot is resized to match.",
   ask_user:
-    "Ask the human one to six structured follow-up questions before drawing. Returns the questions immediately so they appear in the agent chat. Also shows them on the OpenArchitect page. After the human answers (in chat or on the page), call update_brief with answers keyed by question id. Do not call apply_layout until answers are in the brief.",
+    "Ask the human one to six structured follow-up questions before drawing. Opens a modal on the OpenArchitect page and WAITS until they click Send answers. The questions are also in this tool's arguments for ChatGPT to display. When it returns, answers are already saved in the brief — continue with set_plot / apply_layout. Do not call apply_layout before this tool returns.",
   get_floor_plan:
     "Return the full floor plan JSON plus validation issues (overlaps, NBC size minima, missing exterior windows, awkward adjacencies).",
   set_plot:

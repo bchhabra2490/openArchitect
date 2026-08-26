@@ -27,8 +27,8 @@ export function ClarifyingQuestionsModal() {
         <DialogHeader>
           <DialogTitle>A few questions</DialogTitle>
           <DialogDescription>
-            Answer these so the architect can finish your floor plan. You can also reply in
-            ChatGPT if you started from site tools.
+            The agent is waiting for these answers. Fill them in and click Send answers so
+            it can continue drawing.
           </DialogDescription>
         </DialogHeader>
         {pendingQuestions?.length ? (

@@ -40,7 +40,7 @@ The same command layer (`lib/floor-plan/commands.ts`) powers:
 
 People keep a normal interface: pan/zoom canvas, inspector, layer toggles, export, 3D. Agents get structured tools instead of screenshot-clicking.
 
-`ask_user` returns questions immediately so ChatGPT can show them in chat, and the same form appears in the OpenArchitect sidebar. After answers (in chat or on the page), the agent should `update_brief` / `get_brief` before drawing.
+`ask_user` opens an on-page modal and **waits** until you submit answers, so ChatGPT keeps the tool call open and continues automatically afterward. The question list is also available in the tool arguments for ChatGPT to show.
 
 ## Local setup
 

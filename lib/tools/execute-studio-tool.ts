@@ -39,6 +39,7 @@ function parse<T extends z.ZodType>(schema: T, input: unknown): z.infer<T> {
 export async function executeStudioTool(
   name: ToolName,
   rawInput: unknown,
+  extra?: { signal?: AbortSignal },
 ): Promise<CommandResult> {
   const state = useStudioStore.getState();
   let result: CommandResult;
@@ -66,26 +67,21 @@ export async function executeStudioTool(
       break;
     case "ask_user": {
       const input = parse(toolInputSchemas.ask_user, rawInput);
-      // WebMCP: return questions to ChatGPT immediately (do not block).
-      // Also surface the same form on the page so the human can answer either place.
-      useStudioStore.getState().setPendingQuestions(input.questions, "webmcp");
-      const lines = input.questions.map(
-        (question) =>
-          `- (${question.id}) ${question.prompt}` +
-          (question.type === "choice" && question.options?.length
-            ? ` [${question.options.join(" | ")}]`
-            : question.type === "number"
-              ? " [number]"
-              : ""),
-      );
+      // WebMCP: keep the tool call open until the human submits the modal.
+      // Questions are in the tool arguments (visible in ChatGPT) and on the page.
+      // When Send answers runs, this resolves and ChatGPT continues the turn.
+      const answers = await useStudioStore
+        .getState()
+        .waitForAnswers(input.questions, extra?.signal);
+      const latest = useStudioStore.getState();
+      result = commandUpdateBrief(latest.brief, latest.plan, { answers });
       result = {
-        ...commandGetBrief(state.brief, state.plan),
+        ...result,
         questions: input.questions,
         summary: [
-          "Ask the human these questions in your next message (they are also shown on the OpenArchitect page):",
-          ...lines,
-          "When they answer, call update_brief with { answers: { \"<question-id>\": \"<value>\", ... } }. If they answered on the page instead, call get_brief and continue. Do not apply_layout until answers are stored.",
-        ].join("\n"),
+          `User answered: ${JSON.stringify(answers)}.`,
+          "Continue now: set_plot if needed, then apply_layout. Do not ask the same questions again.",
+        ].join(" "),
       };
       break;
     }

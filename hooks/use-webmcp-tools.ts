@@ -34,8 +34,10 @@ export function useWebMcpTools() {
           annotations: {
             readOnlyHint: READ_ONLY_TOOLS.has(name),
           },
-          execute: async (input: Record<string, unknown>) =>
-            executeStudioTool(name, input),
+          execute: async (
+            input: Record<string, unknown>,
+            extra?: { signal?: AbortSignal },
+          ) => executeStudioTool(name, input, extra),
         };
 
         if (document.modelContext) {
