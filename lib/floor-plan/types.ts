@@ -30,6 +30,8 @@ export interface Room {
   y: number;
   width: number;
   height: number;
+  /** Optional hex fill override (e.g. #c5d7ef). When omitted, type default is used. */
+  color?: string;
 }
 
 export interface Opening {

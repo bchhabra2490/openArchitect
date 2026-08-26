@@ -23,8 +23,9 @@ export const ROOM_FILL: Record<RoomType, string> = {
   other: "#e2e2e2",
 };
 
-export function roomFill(type: RoomType, showColors = true) {
+export function roomFill(type: RoomType, showColors = true, color?: string) {
   if (!showColors) return ROOM_NEUTRAL_FILL;
+  if (color) return color;
   return ROOM_FILL[type] ?? "#e2e2e2";
 }
 
@@ -216,13 +217,14 @@ export function renderPlanSvg(
 
   const rooms = plan.rooms
     .map((room) => {
-      const fill = roomFill(room.type, layers.roomColors);
+      const fill = roomFill(room.type, layers.roomColors, room.color);
       const treads = room.type === "stairs" ? stairTreads(room) : "";
+      const sizeLabel = formatSize(room.width, room.height, displayUnit);
       return `<g>
         <rect x="${room.x}" y="${room.y}" width="${room.width}" height="${room.height}" fill="${fill}" stroke="#3f3b36" stroke-width="0.06" />
         ${treads}
         <text x="${room.x + room.width / 2}" y="${room.y + room.height / 2 - 0.18}" text-anchor="middle" font-size="0.42" font-weight="600" fill="#1f1b16">${esc(room.name)}</text>
-        <text x="${room.x + room.width / 2}" y="${room.y + room.height / 2 + 0.28}" text-anchor="middle" font-size="0.28" fill="#5c564c">${esc(formatSize(room.width, room.height, displayUnit))}</text>
+        <text x="${room.x + room.width / 2}" y="${room.y + room.height / 2 + 0.28}" text-anchor="middle" font-size="0.28" fill="#5c564c">${esc(sizeLabel)}</text>
       </g>`;
     })
     .join("");

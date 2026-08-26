@@ -1,6 +1,7 @@
 import { snap } from "./defaults";
 import { DOOR_MIN_WIDTH, ROOM_MINIMA, sharedEdgeLength } from "./design-rules";
 import { furniturePreset } from "./furniture-catalog";
+import { furnitureFitsInRoom, roomsOverlap, translateRoom } from "./geometry";
 import type { Edge, FloorPlan, FurnitureItem, Opening, Room, RoomType } from "./types";
 
 const EPS = 0.02;
@@ -222,6 +223,9 @@ export function moveFurniture(
   if (!room) return plan;
   item.x = snap(clamp(x, 0, room.width - item.width), next.gridSize);
   item.y = snap(clamp(y, 0, room.height - item.height), next.gridSize);
+  if (!furnitureFitsInRoom(room, item)) {
+    clampFurnitureInRoom(next, room);
+  }
   return next;
 }
 
@@ -282,8 +286,11 @@ export function resizeFurniture(
   if (!item) return plan;
   const room = next.rooms.find((entry) => entry.id === item.roomId);
   if (!room) return plan;
-  item.width = snap(clamp(width, next.gridSize, room.width - item.x), next.gridSize);
-  item.height = snap(clamp(height, next.gridSize, room.height - item.y), next.gridSize);
+  item.width = clamp(width, 0.01, Math.max(0.01, room.width - item.x));
+  item.height = clamp(height, 0.01, Math.max(0.01, room.height - item.y));
+  if (!furnitureFitsInRoom(room, item)) {
+    clampFurnitureInRoom(next, room);
+  }
   return next;
 }
 
@@ -296,8 +303,9 @@ export function moveRoom(plan: FloorPlan, roomId: string, x: number, y: number):
   const room = next.rooms.find((entry) => entry.id === roomId);
   if (!room) return plan;
   const grid = next.gridSize;
-  room.x = snap(clamp(x, 0, Math.max(0, next.plot.width - room.width)), grid);
-  room.y = snap(clamp(y, 0, Math.max(0, next.plot.height - room.height)), grid);
+  const nx = snap(clamp(x, 0, Math.max(0, next.plot.width - room.width)), grid);
+  const ny = snap(clamp(y, 0, Math.max(0, next.plot.height - room.height)), grid);
+  translateRoom(room, nx - room.x, ny - room.y);
   return next;
 }
 
@@ -377,18 +385,6 @@ export function defaultRoomFootprint(type: RoomType) {
   return DEFAULT_ROOM_FOOTPRINT[type];
 }
 
-function roomRectsOverlap(
-  a: { x: number; y: number; width: number; height: number },
-  b: { x: number; y: number; width: number; height: number },
-) {
-  return (
-    a.x < b.x + b.width - EPS &&
-    a.x + a.width > b.x + EPS &&
-    a.y < b.y + b.height - EPS &&
-    a.y + a.height > b.y + EPS
-  );
-}
-
 /** First free grid slot that fits; falls back to top-left if the plot is full. */
 export function findFreeRoomPlacement(
   plan: FloorPlan,
@@ -408,8 +404,16 @@ export function findFreeRoomPlacement(
     for (let x = 0; x <= maxX + EPS; x = snap(x + grid, grid)) {
       const sx = snap(clamp(x, 0, maxX), grid);
       const sy = snap(clamp(y, 0, maxY), grid);
-      const candidate = { x: sx, y: sy, width: w, height: h };
-      if (!plan.rooms.some((room) => roomRectsOverlap(candidate, room))) {
+      const candidate: Room = {
+        id: "_",
+        name: "_",
+        type: "other",
+        x: sx,
+        y: sy,
+        width: w,
+        height: h,
+      };
+      if (!plan.rooms.some((room) => roomsOverlap(candidate, room))) {
         return { x: sx, y: sy };
       }
     }

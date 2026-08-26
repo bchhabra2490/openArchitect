@@ -1,4 +1,5 @@
 import { checkDesignRules } from "./design-rules";
+import { furnitureFitsInRoom, roomsOverlap } from "./geometry";
 import type {
   Brief,
   FloorPlan,
@@ -10,17 +11,17 @@ import type {
 
 const EPS = 0.01;
 
-function roomsOverlap(a: Room, b: Room): boolean {
-  return (
-    a.x + EPS < b.x + b.width &&
-    b.x + EPS < a.x + a.width &&
-    a.y + EPS < b.y + b.height &&
-    b.y + EPS < a.y + a.height
-  );
-}
-
 function edgeLength(room: Room, edge: Opening["edge"]): number {
   return edge === "north" || edge === "south" ? room.width : room.height;
+}
+
+function roomOutsidePlot(room: Room, plot: FloorPlan["plot"]): boolean {
+  return (
+    room.x < -EPS ||
+    room.y < -EPS ||
+    room.x + room.width > plot.width + EPS ||
+    room.y + room.height > plot.height + EPS
+  );
 }
 
 export function validatePlan(plan: FloorPlan, brief?: Brief): ValidationIssue[] {
@@ -36,12 +37,7 @@ export function validatePlan(plan: FloorPlan, brief?: Brief): ValidationIssue[] 
   }
 
   for (const room of plan.rooms) {
-    if (
-      room.x < -EPS ||
-      room.y < -EPS ||
-      room.x + room.width > plan.plot.width + EPS ||
-      room.y + room.height > plan.plot.height + EPS
-    ) {
+    if (roomOutsidePlot(room, plan.plot)) {
       issues.push({
         severity: "error",
         code: "room_outside_plot",
@@ -99,12 +95,7 @@ export function validatePlan(plan: FloorPlan, brief?: Brief): ValidationIssue[] 
       });
       continue;
     }
-    if (
-      item.x < -EPS ||
-      item.y < -EPS ||
-      item.x + item.width > room.width + EPS ||
-      item.y + item.height > room.height + EPS
-    ) {
+    if (!furnitureFitsInRoom(room, item, EPS)) {
       issues.push({
         severity: "error",
         code: "furniture_outside_room",

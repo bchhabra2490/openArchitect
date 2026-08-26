@@ -1,8 +1,24 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Box, ChevronDown, File, FileDown, FileUp, FolderOpen } from "lucide-react";
+import {
+  Box,
+  ChevronDown,
+  File,
+  FileDown,
+  FileUp,
+  FolderOpen,
+  RotateCcw,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,9 +45,11 @@ export function ExportButtons() {
   const showObjects = useStudioStore((state) => state.showObjects);
   const openView3d = useStudioStore((state) => state.openView3d);
   const importProject = useStudioStore((state) => state.importProject);
+  const resetStudio = useStudioStore((state) => state.reset);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState<ExportFormat | "json" | "import" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [resetOpen, setResetOpen] = useState(false);
   const exportDisabled = plan.rooms.length === 0 || busy !== null;
 
   async function exportAs(format: ExportFormat) {
@@ -78,6 +96,12 @@ export function ExportButtons() {
       setBusy(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  }
+
+  function confirmReset() {
+    setResetOpen(false);
+    setError(null);
+    resetStudio();
   }
 
   return (
@@ -138,6 +162,18 @@ export function ExportButtons() {
               <FileDown />
               Export PDF
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
+              disabled={busy !== null}
+              onSelect={(event) => {
+                event.preventDefault();
+                setResetOpen(true);
+              }}
+            >
+              <RotateCcw />
+              Reset…
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         <Button
@@ -154,6 +190,26 @@ export function ExportButtons() {
         </Button>
       </div>
       {error ? <p className="max-w-56 text-right text-[11px] text-destructive">{error}</p> : null}
+
+      <Dialog open={resetOpen} onOpenChange={setResetOpen}>
+        <DialogContent showCloseButton={false} className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Reset studio?</DialogTitle>
+            <DialogDescription>
+              This clears the floor plan, brief, chat, and undo history. You cannot undo
+              this.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setResetOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" variant="destructive" onClick={confirmReset}>
+              Reset
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

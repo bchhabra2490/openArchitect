@@ -9,6 +9,7 @@ import {
   resizeOpening,
   resizeRoomWall,
 } from "./edit";
+import { translateRoom } from "./geometry";
 import { sanitizeExportFilename } from "./export-name";
 import { slugId, uniqueId } from "./ids";
 import { DEFAULT_STREET_WIDTH, ensureSiteDefaults } from "./site-defaults";
@@ -22,6 +23,7 @@ import type {
   Opening,
   Room,
 } from "./types";
+import { preciseSize } from "./units";
 import { validatePlan } from "./validate";
 import type { z } from "zod";
 import type {
@@ -65,12 +67,14 @@ function result(
   brief: Brief,
   plan: FloorPlan,
   summary: string,
+  extra?: Partial<Pick<CommandResult, "displayLayers" | "exportFile" | "view3d">>,
 ): CommandResult {
   return {
     brief: cloneBrief(brief),
     plan: clonePlan(plan),
     issues: validatePlan(plan, brief),
     summary,
+    ...extra,
   };
 }
 
@@ -94,8 +98,8 @@ function snapRoom(room: Omit<Room, "id"> & { id: string }): Room {
     ...room,
     x: snap(room.x),
     y: snap(room.y),
-    width: snap(room.width),
-    height: snap(room.height),
+    width: preciseSize(room.width),
+    height: preciseSize(room.height),
   };
 }
 
@@ -130,8 +134,8 @@ export function commandUpdateBrief(
   const nextPlan = clonePlan(plan);
   if (nextBrief.plotWidthM && nextBrief.plotHeightM) {
     nextPlan.plot = {
-      width: snap(nextBrief.plotWidthM),
-      height: snap(nextBrief.plotHeightM),
+      width: preciseSize(nextBrief.plotWidthM),
+      height: preciseSize(nextBrief.plotHeightM),
     };
   }
   return result(nextBrief, nextPlan, "Updated the project brief.");
@@ -143,7 +147,7 @@ export function commandSetPlot(
   input: z.infer<typeof setPlotInputSchema>,
 ): CommandResult {
   const nextPlan = clonePlan(plan);
-  nextPlan.plot = { width: snap(input.width), height: snap(input.height) };
+  nextPlan.plot = { width: preciseSize(input.width), height: preciseSize(input.height) };
   const nextBrief = cloneBrief(brief);
   nextBrief.plotWidthM = nextPlan.plot.width;
   nextBrief.plotHeightM = nextPlan.plot.height;
@@ -167,6 +171,7 @@ function materializeRooms(
       y: room.y,
       width: room.width,
       height: room.height,
+      ...(room.color ? { color: room.color } : {}),
     }),
   );
 }
@@ -179,7 +184,7 @@ export function commandApplyLayout(
   const nextPlan = clonePlan(emptyPlan());
   nextPlan.gridSize = plan.gridSize;
   nextPlan.plot = input.plot
-    ? { width: snap(input.plot.width), height: snap(input.plot.height) }
+    ? { width: preciseSize(input.plot.width), height: preciseSize(input.plot.height) }
     : { ...plan.plot };
   const ids = new Set<string>();
   nextPlan.rooms = materializeRooms(ids, input.rooms);
@@ -198,8 +203,8 @@ export function commandApplyLayout(
     kind: item.kind,
     x: snap(item.x),
     y: snap(item.y),
-    width: snap(item.width),
-    height: snap(item.height),
+    width: preciseSize(item.width),
+    height: preciseSize(item.height),
   }));
   if (input.street) {
     nextPlan.street = {
@@ -239,9 +244,18 @@ export function commandAddRoom(
     y: input.y,
     width: input.width,
     height: input.height,
+    ...(input.color ? { color: input.color } : {}),
   });
   nextPlan.rooms.push(room);
-  return result(brief, nextPlan, `Added ${room.name} (${room.id}).`);
+  const summary = input.color
+    ? `Added ${room.name} (${room.id}) with color ${input.color}.`
+    : `Added ${room.name} (${room.id}).`;
+  return result(
+    brief,
+    nextPlan,
+    summary,
+    input.color ? { displayLayers: { roomColors: true } } : undefined,
+  );
 }
 
 export function commandUpdateRoom(
@@ -256,11 +270,29 @@ export function commandUpdateRoom(
   }
   if (input.name !== undefined) room.name = input.name;
   if (input.type !== undefined) room.type = input.type;
-  if (input.x !== undefined) room.x = snap(input.x);
-  if (input.y !== undefined) room.y = snap(input.y);
-  if (input.width !== undefined) room.width = snap(input.width);
-  if (input.height !== undefined) room.height = snap(input.height);
-  return result(brief, nextPlan, `Updated ${room.name}.`);
+  if (input.x !== undefined || input.y !== undefined) {
+    const nx = input.x !== undefined ? snap(input.x) : room.x;
+    const ny = input.y !== undefined ? snap(input.y) : room.y;
+    translateRoom(room, nx - room.x, ny - room.y);
+  }
+  if (input.width !== undefined) room.width = preciseSize(input.width);
+  if (input.height !== undefined) room.height = preciseSize(input.height);
+  if (input.color !== undefined) {
+    if (input.color === null) delete room.color;
+    else room.color = input.color;
+  }
+  const colorNote =
+    input.color === null
+      ? " Cleared custom color."
+      : input.color
+        ? ` Color set to ${input.color}.`
+        : "";
+  return result(
+    brief,
+    nextPlan,
+    `Updated ${room.name}.${colorNote}`,
+    input.color ? { displayLayers: { roomColors: true } } : undefined,
+  );
 }
 
 export function commandRemoveRoom(
@@ -340,8 +372,8 @@ export function commandAddFurniture(
     kind: input.kind,
     x: snap(input.x, grid),
     y: snap(input.y, grid),
-    width: snap(input.width, grid),
-    height: snap(input.height, grid),
+    width: preciseSize(input.width),
+    height: preciseSize(input.height),
   };
   nextPlan.furniture.push(item);
   return result(brief, nextPlan, `Added ${item.name} in ${item.roomId}.`);

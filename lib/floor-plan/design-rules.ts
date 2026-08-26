@@ -6,6 +6,7 @@ import {
   hasPorchRoom,
   hasStairsRoom,
 } from "./brief-flags";
+import { roomArea, roomMinSide, sharedEdgeLengthParts } from "./geometry";
 
 const EPS = 0.01;
 const TOUCH = 0.5;
@@ -116,29 +117,15 @@ Furniture (schematic)
 After drawing, call get_standards_check (or get_floor_plan) and fix every design error and warning you can.`;
 
 function area(room: Room) {
-  return room.width * room.height;
+  return roomArea(room);
 }
 
 function minSide(room: Room) {
-  return Math.min(room.width, room.height);
-}
-
-function overlap1d(a0: number, a1: number, b0: number, b1: number) {
-  return Math.min(a1, b1) - Math.max(a0, b0);
+  return roomMinSide(room);
 }
 
 export function sharedEdgeLength(a: Room, b: Room): number {
-  const verticalTouch =
-    Math.abs(a.x + a.width - b.x) < EPS || Math.abs(b.x + b.width - a.x) < EPS;
-  if (verticalTouch) {
-    return overlap1d(a.y, a.y + a.height, b.y, b.y + b.height);
-  }
-  const horizontalTouch =
-    Math.abs(a.y + a.height - b.y) < EPS || Math.abs(b.y + b.height - a.y) < EPS;
-  if (horizontalTouch) {
-    return overlap1d(a.x, a.x + a.width, b.x, b.x + b.width);
-  }
-  return 0;
+  return sharedEdgeLengthParts(a, b);
 }
 
 function isAdjacent(a: Room, b: Room) {

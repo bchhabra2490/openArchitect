@@ -18,9 +18,8 @@ export function StudioApp({ chatEnabled = false }: { chatEnabled?: boolean }) {
   const [hydrated, setHydrated] = useState(
     () => useStudioStore.persist?.hasHydrated() ?? false,
   );
-  const [chatKey, setChatKey] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const resetStore = useStudioStore((state) => state.reset);
+  const sessionKey = useStudioStore((state) => state.sessionKey);
 
   useEffect(() => {
     const unsub = useStudioStore.persist.onFinishHydration(() => setHydrated(true));
@@ -41,11 +40,6 @@ export function StudioApp({ chatEnabled = false }: { chatEnabled?: boolean }) {
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
   }, []);
-
-  function reset() {
-    resetStore();
-    setChatKey((key) => key + 1);
-  }
 
   function toggleSidebar() {
     setSidebarOpen((open) => !open);
@@ -78,16 +72,13 @@ export function StudioApp({ chatEnabled = false }: { chatEnabled?: boolean }) {
         <div className="flex items-center gap-2">
           <UnitSelector />
           <WebMcpStatus />
-          <Button variant="ghost" size="sm" onClick={reset}>
-            Reset
-          </Button>
         </div>
       </header>
       <div className="relative flex min-h-0 flex-1 flex-col md:flex-row">
         {sidebarOpen ? (
           <aside className="relative flex h-[42vh] w-full shrink-0 flex-col border-b p-3 md:h-auto md:w-[380px] md:border-r md:border-b-0">
             {hydrated ? (
-              <ChatPanel key={chatKey} chatEnabled={chatEnabled} />
+              <ChatPanel key={sessionKey} chatEnabled={chatEnabled} />
             ) : (
               <p className="text-sm text-muted-foreground">Restoring session…</p>
             )}
@@ -112,7 +103,7 @@ export function StudioApp({ chatEnabled = false }: { chatEnabled?: boolean }) {
             {toggleButton}
           </div>
         )}
-        <FloorPlanCanvas key={chatKey} />
+        <FloorPlanCanvas key={sessionKey} />
       </div>
       <FloorPlan3dViewer />
       <ClarifyingQuestionsModal />

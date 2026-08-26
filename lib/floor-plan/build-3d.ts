@@ -369,6 +369,7 @@ export function buildFloorPlan3d(
   ];
 
   for (const room of plan.rooms) {
+    const fill = roomFill(room.type, layers.roomColors, room.color);
     meshes.push(
       box(
         `${room.id}-floor`,
@@ -378,7 +379,7 @@ export function buildFloorPlan3d(
         room.width,
         FLOOR_THICKNESS,
         room.height,
-        roomFill(room.type, layers.roomColors),
+        fill,
       ),
     );
     meshes.push(...wallMeshes(plan, room, layers.doors));

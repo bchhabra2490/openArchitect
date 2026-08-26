@@ -7,6 +7,11 @@ const idSchema = z
   .max(48)
   .regex(/^[a-z][a-z0-9_-]*$/i, "Use a short id like kitchen or bed-1");
 
+const roomColorSchema = z
+  .string()
+  .regex(/^#[0-9A-Fa-f]{6}$/, "Use a hex color like #c5d7ef")
+  .describe("Hex fill color override, e.g. #c5d7ef");
+
 export const roomInputSchema = z.object({
   id: idSchema.optional().describe("Stable id, e.g. kitchen or bed-1"),
   name: z.string().min(1).describe("Human label shown on the canvas"),
@@ -15,6 +20,7 @@ export const roomInputSchema = z.object({
   y: z.number().describe("Meters from the plot's top (north) edge"),
   width: z.number().positive().describe("Room width in meters"),
   height: z.number().positive().describe("Room height in meters"),
+  color: roomColorSchema.optional().describe("Optional fill override; omit for type default"),
 });
 
 export const openingInputSchema = z.object({
@@ -103,6 +109,10 @@ export const updateRoomInputSchema = z.object({
   y: z.number().optional(),
   width: z.number().positive().optional(),
   height: z.number().positive().optional(),
+  color: roomColorSchema
+    .nullable()
+    .optional()
+    .describe("Hex fill override, or null to clear back to the type default"),
 });
 
 export const removeByIdInputSchema = z.object({

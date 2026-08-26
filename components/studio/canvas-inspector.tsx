@@ -5,6 +5,7 @@ import { ChevronDown, Copy, Layers2, PanelBottom, Redo2, Undo2 } from "lucide-re
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FURNITURE_CATALOG } from "@/lib/floor-plan/furniture-catalog";
+import { ROOM_FILL } from "@/lib/floor-plan/plan-svg";
 import { ROOM_TYPES, type OpeningKind, type RoomType } from "@/lib/floor-plan/types";
 import {
   displayToMeters,
@@ -102,7 +103,7 @@ function MeasureField({
       {label}
       <Input
         key={`${id}-${unit}-${meters}`}
-        className="h-6 w-14 px-1.5 text-xs"
+        className="h-6 w-20 px-1.5 text-xs"
         defaultValue={formatMeasure(meters, unit)}
         onBlur={(event) => commit(event.target.value, event.target)}
         onKeyDown={(event) => {
@@ -225,6 +226,59 @@ function AddRoomButtons() {
   );
 }
 
+const ROOM_COLOR_SWATCHES = Array.from(new Set(Object.values(ROOM_FILL)));
+
+function RoomColorField({
+  type,
+  color,
+  onChange,
+}: {
+  type: RoomType;
+  color?: string;
+  onChange: (color: string | null) => void;
+}) {
+  const active = color ?? ROOM_FILL[type];
+  return (
+    <div className="mt-2">
+      <p className="text-[11px] font-medium text-muted-foreground">Color</p>
+      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+        {ROOM_COLOR_SWATCHES.map((swatch) => {
+          const selected = active.toLowerCase() === swatch.toLowerCase();
+          return (
+            <button
+              key={swatch}
+              type="button"
+              title={swatch}
+              aria-label={`Set room color ${swatch}`}
+              aria-pressed={selected}
+              className={cn(
+                "size-5 rounded-md border border-black/15 transition-shadow",
+                selected && "ring-2 ring-ring ring-offset-1 ring-offset-background",
+              )}
+              style={{ backgroundColor: swatch }}
+              onClick={() => onChange(swatch)}
+            />
+          );
+        })}
+        <label className="relative size-5 overflow-hidden rounded-md border border-black/15">
+          <span className="sr-only">Custom room color</span>
+          <input
+            type="color"
+            value={active}
+            onChange={(event) => onChange(event.target.value)}
+            className="absolute inset-0 size-[200%] -translate-x-1/4 -translate-y-1/4 cursor-pointer border-0 p-0"
+          />
+        </label>
+        {color ? (
+          <Button type="button" size="xs" variant="outline" onClick={() => onChange(null)}>
+            Reset
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 const panelClass = "rounded-xl border bg-background/95 p-3 shadow-sm";
 
 export function CanvasInspector() {
@@ -253,6 +307,7 @@ export function CanvasInspector() {
   const setPlacingOpeningKind = useStudioStore((state) => state.setPlacingOpeningKind);
   const renameSelectedRoom = useStudioStore((state) => state.renameSelectedRoom);
   const resizeSelectedRoom = useStudioStore((state) => state.resizeSelectedRoom);
+  const setSelectedRoomColor = useStudioStore((state) => state.setSelectedRoomColor);
   const removeSelectedRoom = useStudioStore((state) => state.removeSelectedRoom);
   const addFurnitureInRoom = useStudioStore((state) => state.addFurnitureInRoom);
   const setSelectedFurnitureId = useStudioStore((state) => state.setSelectedFurnitureId);
@@ -431,6 +486,11 @@ export function CanvasInspector() {
             onCommit={(height) => resizeSelectedRoom(room.width, height)}
           />
         </div>
+        <RoomColorField
+          type={room.type}
+          color={room.color}
+          onChange={setSelectedRoomColor}
+        />
         {roomFurniture.length + roomOpenings.length > 0 ? (
           <div className="mt-2 flex flex-wrap gap-1">
             {roomFurniture.map((item) => (

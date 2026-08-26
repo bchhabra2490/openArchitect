@@ -12,6 +12,8 @@ import {
   commandUpdateRoom,
 } from "@/lib/floor-plan/commands";
 import { emptyBrief, emptyPlan, nearestBlockSize, normalizePlan } from "@/lib/floor-plan/defaults";
+import { cloneRoomDeep, translateRoom } from "@/lib/floor-plan/geometry";
+import { uniqueId } from "@/lib/floor-plan/ids";
 import {
   defaultOpeningWidth,
   defaultRoomFootprint,
@@ -29,7 +31,6 @@ import {
   resizeRoomWall,
 } from "@/lib/floor-plan/edit";
 import { furniturePreset } from "@/lib/floor-plan/furniture-catalog";
-import { uniqueId } from "@/lib/floor-plan/ids";
 import type {
   Brief,
   ClarifyingQuestion,
@@ -98,6 +99,7 @@ type StudioState = {
   moveSelectedRoom: (x: number, y: number, roomId?: string) => void;
   renameSelectedRoom: (name: string) => void;
   resizeSelectedRoom: (width: number, height: number) => void;
+  setSelectedRoomColor: (color: string | null) => void;
   removeSelectedRoom: () => void;
   setPlot: (width: number, height: number) => void;
   addRoom: (type: RoomType) => void;
@@ -135,6 +137,8 @@ type StudioState = {
   setWebmcpStatus: (status: WebMcpStatus) => void;
   importProject: (brief: Brief, plan: FloorPlan) => void;
   reset: () => void;
+  /** Bumps when the studio is reset so chat/canvas can remount. */
+  sessionKey: number;
 };
 
 type PendingWaiter = {
@@ -186,6 +190,7 @@ export const useStudioStore = create<StudioState>()(
       showRoomColors: true,
       showDoors: true,
       showObjects: true,
+      sessionKey: 0,
       applyResult: (result) => {
         if (result.displayLayers) {
           const layers = result.displayLayers;
@@ -297,12 +302,25 @@ export const useStudioStore = create<StudioState>()(
         const { brief, plan } = get();
         const room = plan.rooms.find((entry) => entry.id === id);
         if (!room) return;
+        const min = 0.01;
         const result = commandUpdateRoom(brief, plan, {
           id,
-          width: Math.min(width, Math.max(plan.gridSize, plan.plot.width - room.x)),
-          height: Math.min(height, Math.max(plan.gridSize, plan.plot.height - room.y)),
+          width: Math.min(width, Math.max(min, plan.plot.width - room.x)),
+          height: Math.min(height, Math.max(min, plan.plot.height - room.y)),
         });
         set(commitPlan(get, result.plan, { brief: result.brief }));
+      },
+      setSelectedRoomColor: (color) => {
+        const id = get().selectedRoomId;
+        if (!id) return;
+        const { brief, plan, showRoomColors } = get();
+        const result = commandUpdateRoom(brief, plan, { id, color });
+        set(
+          commitPlan(get, result.plan, {
+            brief: result.brief,
+            ...(color && !showRoomColors ? { showRoomColors: true } : {}),
+          }),
+        );
       },
       removeSelectedRoom: () => {
         const id = get().selectedRoomId;
@@ -487,7 +505,7 @@ export const useStudioStore = create<StudioState>()(
           set({
             clipboard: {
               type: "room",
-              room: { ...room },
+              room: cloneRoomDeep(room),
               openings: plan.openings
                 .filter((opening) => opening.roomId === room.id)
                 .map((opening) => ({ ...opening })),
@@ -510,17 +528,12 @@ export const useStudioStore = create<StudioState>()(
           ]);
           const roomId = uniqueId(ids, clipboard.room.id);
           ids.add(roomId);
+          const pasted = cloneRoomDeep(clipboard.room);
+          pasted.id = roomId;
+          translateRoom(pasted, plan.gridSize, plan.gridSize);
           const nextPlan: FloorPlan = {
             ...plan,
-            rooms: [
-              ...plan.rooms,
-              {
-                ...clipboard.room,
-                id: roomId,
-                x: clipboard.room.x + plan.gridSize,
-                y: clipboard.room.y + plan.gridSize,
-              },
-            ],
+            rooms: [...plan.rooms, pasted],
             openings: [
               ...plan.openings,
               ...clipboard.openings.map((opening) => {
@@ -752,6 +765,7 @@ export const useStudioStore = create<StudioState>()(
           historyGesture: false,
           view3dOpen: false,
           chatMessages: [],
+          sessionKey: get().sessionKey + 1,
         });
       },
     }),

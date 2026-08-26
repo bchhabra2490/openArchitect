@@ -48,11 +48,11 @@ export const TOOL_DESCRIPTIONS: Record<ToolName, string> = {
   set_plot:
     "Set the overall rectangular plot size in meters. Origin is the top-left (northwest) corner. x increases east, y increases south.",
   apply_layout:
-    "Replace rooms, openings, furniture, and the frontage street in one shot. Prefer this for the first draft. Include an entrance porch, a stairs area, and street.edge on the same side as the main door unless the user declined them. Room ids must be stable slugs (kitchen, bed-1, porch, stairs). Coordinates are meters on a 0.5 m grid.",
+    "Replace rooms, openings, furniture, and the frontage street in one shot. Prefer this for the first draft. Include an entrance porch, a stairs area, and street.edge on the same side as the main door unless the user declined them. Room ids must be stable slugs (kitchen, bed-1, porch, stairs). Coordinates are meters on a 0.5 m grid. Optional per-room color hex overrides type defaults.",
   add_room:
-    "Add a single axis-aligned room rectangle. Coordinates are meters from the plot origin (top-left).",
+    "Add a single axis-aligned room rectangle. Coordinates are meters from the plot origin (top-left). Optional color is a hex fill override like #c5d7ef.",
   update_room:
-    "Move or resize one room by id. Does not push shared walls into neighbors — use resize_wall for that.",
+    "Update one room by id: rename, move, resize, change type, or set fill color. color is a hex string like #c5d7ef; pass null to clear back to the type default. Does not push shared walls into neighbors — use resize_wall for that. Prefer this when the user asks to recolor a room.",
   remove_room: "Remove a room and any openings or furniture attached to it.",
   add_opening:
     "Add a door or window on a room edge. offset is meters from the start of that edge (west end for north/south, north end for east/west).",

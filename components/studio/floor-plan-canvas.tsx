@@ -771,7 +771,7 @@ function PlanSvg({
           room={room}
           selected={selectedRoomId === room.id}
           displayUnit={displayUnit}
-          fill={roomFill(room.type, showRoomColors)}
+          fill={roomFill(room.type, showRoomColors, room.color)}
           onSelect={setSelectedRoomId}
           onMoveStart={(event) => {
             if (placingOpeningKind) return;
@@ -1070,7 +1070,7 @@ export function FloorPlanCanvas() {
       <div className="pointer-events-none absolute top-3 right-3">
         <ExportButtons />
       </div>
-      <div className="absolute right-3 bottom-3 left-3 flex items-end justify-between gap-3">
+      <div className="pointer-events-none absolute right-3 bottom-3 left-3 flex items-end justify-between gap-3">
         <CanvasInspector />
         <div className="flex flex-col items-end gap-2">
           {plan.rooms.length > 0 ? (
