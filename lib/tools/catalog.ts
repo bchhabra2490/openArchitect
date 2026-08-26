@@ -9,7 +9,6 @@ export const TOOL_TITLES: Record<ToolName, string> = {
   get_floor_plan: "Get floor plan",
   set_plot: "Set plot size",
   apply_layout: "Apply full layout",
-  switch_design: "Switch design",
   add_room: "Add room",
   update_room: "Update room",
   remove_room: "Remove room",
@@ -31,7 +30,7 @@ export const TOOL_TITLES: Record<ToolName, string> = {
 
 export const TOOL_DESCRIPTIONS: Record<ToolName, string> = {
   get_brief:
-    "Read the current project brief: description, plot size, bedroom/bathroom counts, notes, answers already collected, which of the three designs is visible, and how many layouts are filled.",
+    "Read the current project brief: description, plot size, bedroom/bathroom counts, notes, and answers already collected.",
   get_design_rules:
     "Return the house-making standards this studio enforces: NBC-aligned room sizes, doors, windows, and adjacency rules for living, dining, bedrooms, kitchen, bathrooms, and hallways.",
   update_brief:
@@ -39,13 +38,11 @@ export const TOOL_DESCRIPTIONS: Record<ToolName, string> = {
   ask_user:
     "Ask the human one to six structured follow-up questions before drawing. Use when plot size or bedroom count is missing, or when a constraint is ambiguous. Do not call apply_layout until answers are in the brief.",
   get_floor_plan:
-    "Return the visible design's floor plan JSON plus validation issues (overlaps, NBC size minima, missing exterior windows, awkward adjacencies). Also lists the other two design slots.",
+    "Return the full floor plan JSON plus validation issues (overlaps, NBC size minima, missing exterior windows, awkward adjacencies).",
   set_plot:
     "Set the overall rectangular plot size in meters. Origin is the top-left (northwest) corner. x increases east, y increases south.",
   apply_layout:
-    "Replace rooms, openings, furniture, and the frontage street for one of three design slots. When drafting a new home, call this three times with variant 1, 2, and 3 — each a genuinely different layout of the same brief (same plot and room counts). Include label and concept. Include an entrance porch, a stairs area, and street.edge on the same side as the main door unless the user declined them. Room ids must be stable slugs (kitchen, bed-1, porch, stairs). Coordinates are meters on a 0.5 m grid.",
-  switch_design:
-    "Show one of the three saved designs on the canvas. Incremental edits apply to the visible design. After generating all three, switch to variant 1 unless the user asked for another.",
+    "Replace rooms, openings, furniture, and the frontage street in one shot. Prefer this for the first draft. Include an entrance porch, a stairs area, and street.edge on the same side as the main door unless the user declined them. Room ids must be stable slugs (kitchen, bed-1, porch, stairs). Coordinates are meters on a 0.5 m grid.",
   add_room:
     "Add a single axis-aligned room rectangle. Coordinates are meters from the plot origin (top-left).",
   update_room:

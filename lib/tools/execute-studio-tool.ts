@@ -19,11 +19,9 @@ import {
   commandResizeOpening,
   commandResizeWall,
   commandSetPlot,
-  commandSwitchDesign,
   commandUpdateBrief,
   commandUpdateRoom,
 } from "@/lib/floor-plan/commands";
-import { summarizeDesigns } from "@/lib/floor-plan/designs";
 import { DESIGN_RULES_FOR_AGENTS, DESIGN_RULES_REFERENCE } from "@/lib/floor-plan/design-rules";
 import { toolInputSchemas, type ToolName } from "@/lib/floor-plan/schema";
 import type { CommandResult } from "@/lib/floor-plan/types";
@@ -44,17 +42,7 @@ export async function executeStudioTool(
   switch (name) {
     case "get_brief":
       parse(toolInputSchemas.get_brief, rawInput);
-      {
-        const snapshot = commandGetBrief(state.brief, state.plan);
-        const summaries = summarizeDesigns(state.designs);
-        const filled = summaries.filter((item) => item.roomCount > 0).length;
-        result = {
-          ...snapshot,
-          activeDesign: state.activeDesign,
-          designSummaries: summaries,
-          summary: `${snapshot.summary} Viewing design ${state.activeDesign}. ${filled}/3 layouts filled.`,
-        };
-      }
+      result = commandGetBrief(state.brief, state.plan);
       break;
     case "get_design_rules":
       parse(toolInputSchemas.get_design_rules, rawInput);
@@ -88,17 +76,7 @@ export async function executeStudioTool(
     }
     case "get_floor_plan":
       parse(toolInputSchemas.get_floor_plan, rawInput);
-      {
-        const snapshot = commandGetFloorPlan(state.brief, state.plan);
-        result = {
-          ...snapshot,
-          activeDesign: state.activeDesign,
-          designLabel: state.designs[state.activeDesign - 1]?.label,
-          designConcept: state.designs[state.activeDesign - 1]?.concept,
-          designSummaries: summarizeDesigns(state.designs),
-          summary: `Design ${state.activeDesign}: ${snapshot.summary}`,
-        };
-      }
+      result = commandGetFloorPlan(state.brief, state.plan);
       break;
     case "set_plot":
       result = commandSetPlot(
@@ -114,13 +92,6 @@ export async function executeStudioTool(
         parse(toolInputSchemas.apply_layout, rawInput),
       );
       break;
-    case "switch_design": {
-      const { variant } = parse(toolInputSchemas.switch_design, rawInput);
-      useStudioStore.getState().selectDesign(variant);
-      const next = useStudioStore.getState();
-      result = commandSwitchDesign(next.brief, next.designs, variant);
-      break;
-    }
     case "add_room":
       result = commandAddRoom(
         state.brief,
@@ -249,10 +220,5 @@ export async function executeStudioTool(
   }
 
   useStudioStore.getState().applyResult(result);
-  const latest = useStudioStore.getState();
-  return {
-    ...result,
-    activeDesign: result.activeDesign ?? latest.activeDesign,
-    designSummaries: summarizeDesigns(latest.designs),
-  };
+  return result;
 }

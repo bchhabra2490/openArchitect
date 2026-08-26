@@ -37,7 +37,7 @@ export function StudioApp() {
         <div>
           <p className="text-sm font-medium tracking-tight">Floor Plan Architect</p>
           <p className="text-xs text-muted-foreground">
-            Three layouts per home. Agents draw; you stay in the loop.
+            Agents draw on the canvas. You stay in the loop.
           </p>
         </div>
         <div className="flex items-center gap-2">

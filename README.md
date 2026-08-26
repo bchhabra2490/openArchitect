@@ -2,7 +2,7 @@
 
 A WebMCP studio where a person and an agent design a home together on the same live canvas.
 
-Describe a house. The agent asks a few clarifying questions, then draws **three alternative schematic floor plans**. You compare them, drag walls and furniture, export PNG/PDF, and open a 3D dollhouse. ChatGPT (or Chrome with WebMCP) can call the same canvas commands as site tools — it does not have to click through the UI.
+Describe a house. The agent asks a few clarifying questions, then draws a schematic floor plan. You drag walls and furniture, export PNG/PDF, and open a 3D dollhouse. ChatGPT (or Chrome with WebMCP) can call the same canvas commands as site tools — it does not have to click through the UI.
 
 Built for the [OpenAI WebMCP Challenge](https://openai.com/webmcp-challenge/).
 
@@ -10,9 +10,9 @@ Built for the [OpenAI WebMCP Challenge](https://openai.com/webmcp-challenge/).
 
 1. Open the live URL in **ChatGPT’s in-app browser** (WebMCP is on by default) or in **Chrome 149+** with `chrome://flags/#enable-webmcp-testing` enabled.
 2. Confirm the header badge reads **WebMCP on**.
-3. In ChatGPT, look for **Site tools** in the address bar. You should see tools such as `get_brief`, `apply_layout`, `switch_design`, and `generate_3d`.
-4. Ask: *“3BHK, about 1200 sqft, open kitchen. Draw three alternative layouts, then open 3D.”*
-5. Watch rooms appear on the canvas. Switch **Design 1 / 2 / 3**. Orbit the 3D view.
+3. In ChatGPT, look for **Site tools** in the address bar. You should see tools such as `get_brief`, `apply_layout`, and `generate_3d`.
+4. Ask: *“3BHK, about 1200 sqft, open kitchen. Draw a layout, then open 3D.”*
+5. Watch rooms appear on the canvas. Orbit the 3D view.
 
 The in-app chat on the left is a fallback (needs `OPENAI_API_KEY` on the host). Judges do not need that key if they use ChatGPT site tools.
 
@@ -23,7 +23,7 @@ On load, the page registers every canvas command with the browser:
 ```js
 document.modelContext.registerTool({
   name: "apply_layout",
-  description: "Replace rooms, openings, furniture, and the frontage street for one of three design slots.",
+  description: "Replace rooms, openings, furniture, and the frontage street in one shot.",
   inputSchema: { /* JSON Schema from Zod */ },
   execute: async (input) => {
     return executeStudioTool("apply_layout", input);

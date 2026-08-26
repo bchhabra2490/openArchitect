@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Box, FileDown, X } from "lucide-react";
-import { DesignSwitcher } from "@/components/studio/design-switcher";
 import { LayerToggles } from "@/components/studio/layer-toggles";
 import { Button } from "@/components/ui/button";
 import { sanitizeExportFilename } from "@/lib/floor-plan/export-name";
@@ -122,7 +121,6 @@ function FloorPlan3dSession() {
             Drag to orbit · scroll to zoom · dollhouse view (no ceiling)
           </p>
         </div>
-        <DesignSwitcher />
         <div className="flex items-center gap-1.5">
           <LayerToggles />
           <Button

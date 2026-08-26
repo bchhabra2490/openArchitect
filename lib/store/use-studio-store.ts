@@ -4,12 +4,6 @@ import type { UIMessage } from "ai";
 import { commandAddFurniture, commandAddOpening, commandRemoveFurniture, commandRemoveOpening } from "@/lib/floor-plan/commands";
 import { emptyBrief, emptyPlan, nearestBlockSize, normalizePlan } from "@/lib/floor-plan/defaults";
 import {
-  emptyDesigns,
-  isDesignIndex,
-  normalizeDesigns,
-  syncActiveDesign,
-} from "@/lib/floor-plan/designs";
-import {
   defaultOpeningWidth,
   moveFurniture,
   moveOpening,
@@ -24,12 +18,11 @@ import {
   resizeRoomWall,
 } from "@/lib/floor-plan/edit";
 import { furniturePreset } from "@/lib/floor-plan/furniture-catalog";
+import { uniqueId } from "@/lib/floor-plan/ids";
 import type {
   Brief,
   ClarifyingQuestion,
   CommandResult,
-  DesignIndex,
-  DesignVariant,
   Edge,
   FloorPlan,
   OpeningKind,
@@ -38,6 +31,16 @@ import type {
 } from "@/lib/floor-plan/types";
 import { isDisplayLayers } from "@/lib/floor-plan/layers";
 import { isDisplayUnit, type DisplayUnit } from "@/lib/floor-plan/units";
+import {
+  captureHistory,
+  cloneClipboard,
+  normalizeHistoryList,
+  plansMatch,
+  pushHistory,
+  resetHistoryClock,
+  restoreHistory,
+  type HistorySnapshot,
+} from "@/lib/store/history";
 
 export type WebMcpStatus = "unknown" | "available" | "unavailable";
 export type QuestionSource = "chat" | "webmcp" | null;
@@ -45,13 +48,14 @@ export type QuestionSource = "chat" | "webmcp" | null;
 type StudioState = {
   brief: Brief;
   plan: FloorPlan;
-  designs: DesignVariant[];
-  activeDesign: DesignIndex;
   selectedRoomId: string | null;
   selectedFurnitureId: string | null;
   selectedOpeningId: string | null;
   placingOpeningKind: OpeningKind | null;
   clipboard: StudioClipboard | null;
+  past: HistorySnapshot[];
+  future: HistorySnapshot[];
+  historyGesture: boolean;
   pendingQuestions: ClarifyingQuestion[] | null;
   questionSource: QuestionSource;
   webmcpStatus: WebMcpStatus;
@@ -61,16 +65,7 @@ type StudioState = {
   showRoomColors: boolean;
   showDoors: boolean;
   showObjects: boolean;
-  applyResult: (result: Pick<
-    CommandResult,
-    | "brief"
-    | "plan"
-    | "exportFile"
-    | "view3d"
-    | "activeDesign"
-    | "designLabel"
-    | "designConcept"
-  >) => void;
+  applyResult: (result: Pick<CommandResult, "brief" | "plan" | "exportFile" | "view3d">) => void;
   setChatMessages: (messages: UIMessage[]) => void;
   setDisplayUnit: (unit: DisplayUnit) => void;
   setShowRoomColors: (show: boolean) => void;
@@ -103,6 +98,10 @@ type StudioState = {
   copySelected: () => void;
   pasteClipboard: () => void;
   duplicateSelected: () => void;
+  beginHistoryGesture: () => void;
+  endHistoryGesture: () => void;
+  undo: () => void;
+  redo: () => void;
   clearSelection: () => void;
   setPendingQuestions: (questions: ClarifyingQuestion[] | null) => void;
   waitForAnswers: (
@@ -112,7 +111,6 @@ type StudioState = {
   submitAnswers: (answers: Record<string, string>) => void;
   setWebmcpStatus: (status: WebMcpStatus) => void;
   reset: () => void;
-  selectDesign: (index: DesignIndex) => void;
 };
 
 type PendingWaiter = {
@@ -127,18 +125,16 @@ function commitPlan(
   get: () => StudioState,
   plan: FloorPlan,
   extra: Partial<StudioState> = {},
-  meta?: { label?: string; concept?: string; activeDesign?: DesignIndex },
+  meta?: { coalesce?: boolean },
 ): Partial<StudioState> {
-  const activeDesign = meta?.activeDesign ?? extra.activeDesign ?? get().activeDesign;
-  return {
+  const state = get();
+  const patch: Partial<StudioState> = {
     ...extra,
     plan,
-    activeDesign,
-    designs: syncActiveDesign(get().designs, activeDesign, plan, {
-      label: meta?.label,
-      concept: meta?.concept,
-    }),
   };
+  if (state.historyGesture) return patch;
+  const history = pushHistory(state.past, captureHistory(state), Boolean(meta?.coalesce));
+  return { ...patch, ...history };
 }
 
 export const useStudioStore = create<StudioState>()(
@@ -146,13 +142,14 @@ export const useStudioStore = create<StudioState>()(
     (set, get) => ({
       brief: emptyBrief(),
       plan: emptyPlan(),
-      designs: emptyDesigns(),
-      activeDesign: 1,
       selectedRoomId: null,
       selectedFurnitureId: null,
       selectedOpeningId: null,
       placingOpeningKind: null,
       clipboard: null,
+      past: [],
+      future: [],
+      historyGesture: false,
       pendingQuestions: null,
       questionSource: null,
       webmcpStatus: "unknown",
@@ -167,56 +164,29 @@ export const useStudioStore = create<StudioState>()(
       applyResult: (result) => {
         const { selectedRoomId, selectedFurnitureId, selectedOpeningId } = get();
         const plan = normalizePlan(result.plan);
-        const activeDesign = isDesignIndex(result.activeDesign)
-          ? result.activeDesign
-          : get().activeDesign;
         set(
-          commitPlan(
-            get,
-            plan,
-            {
-              brief: result.brief,
-              selectedRoomId: plan.rooms.some((room) => room.id === selectedRoomId)
-                ? selectedRoomId
-                : null,
-              selectedFurnitureId: plan.furniture.some(
-                (item) => item.id === selectedFurnitureId,
-              )
-                ? selectedFurnitureId
-                : null,
-              selectedOpeningId: plan.openings.some(
-                (opening) => opening.id === selectedOpeningId,
-              )
-                ? selectedOpeningId
-                : null,
-              pendingExport: result.exportFile
-                ? { ...result.exportFile, id: ++exportSeq }
-                : get().pendingExport,
-              view3dOpen: result.view3d ? true : get().view3dOpen,
-              view3dFilename: result.view3d?.filename ?? get().view3dFilename,
-            },
-            {
-              activeDesign,
-              label: result.designLabel,
-              concept: result.designConcept,
-            },
-          ),
+          commitPlan(get, plan, {
+            brief: result.brief,
+            selectedRoomId: plan.rooms.some((room) => room.id === selectedRoomId)
+              ? selectedRoomId
+              : null,
+            selectedFurnitureId: plan.furniture.some(
+              (item) => item.id === selectedFurnitureId,
+            )
+              ? selectedFurnitureId
+              : null,
+            selectedOpeningId: plan.openings.some(
+              (opening) => opening.id === selectedOpeningId,
+            )
+              ? selectedOpeningId
+              : null,
+            pendingExport: result.exportFile
+              ? { ...result.exportFile, id: ++exportSeq }
+              : get().pendingExport,
+            view3dOpen: result.view3d ? true : get().view3dOpen,
+            view3dFilename: result.view3d?.filename ?? get().view3dFilename,
+          }),
         );
-      },
-      selectDesign: (index) => {
-        const { designs, activeDesign, plan } = get();
-        if (index === activeDesign) return;
-        const saved = syncActiveDesign(designs, activeDesign, plan);
-        const next = saved.find((design) => design.index === index) ?? saved[0];
-        set({
-          designs: saved,
-          activeDesign: index,
-          plan: next.plan,
-          selectedRoomId: null,
-          selectedFurnitureId: null,
-          selectedOpeningId: null,
-          placingOpeningKind: null,
-        });
       },
       clearPendingExport: () => set({ pendingExport: null }),
       openView3d: (filename) =>
@@ -245,14 +215,7 @@ export const useStudioStore = create<StudioState>()(
         }),
       setGridSize: (meters) => {
         const gridSize = nearestBlockSize(meters);
-        const { plan, designs } = get();
-        set({
-          plan: { ...plan, gridSize },
-          designs: designs.map((design) => ({
-            ...design,
-            plan: { ...design.plan, gridSize },
-          })),
-        });
+        set(commitPlan(get, { ...get().plan, gridSize }, {}, { coalesce: true }));
       },
       setSelectedRoomId: (id) =>
         set({
@@ -289,7 +252,7 @@ export const useStudioStore = create<StudioState>()(
       renameSelectedRoom: (name) => {
         const id = get().selectedRoomId;
         if (!id) return;
-        set(commitPlan(get, renameRoom(get().plan, id, name)));
+        set(commitPlan(get, renameRoom(get().plan, id, name), {}, { coalesce: true }));
       },
       addFurnitureInRoom: (roomId, kind) => {
         const { brief, plan } = get();
@@ -342,7 +305,7 @@ export const useStudioStore = create<StudioState>()(
       renameSelectedFurniture: (name) => {
         const id = get().selectedFurnitureId;
         if (!id) return;
-        set(commitPlan(get, renameFurniture(get().plan, id, name)));
+        set(commitPlan(get, renameFurniture(get().plan, id, name), {}, { coalesce: true }));
       },
       removeSelectedFurniture: () => {
         const id = get().selectedFurnitureId;
@@ -414,7 +377,7 @@ export const useStudioStore = create<StudioState>()(
         );
       },
       copySelected: () => {
-        const { plan, selectedFurnitureId, selectedOpeningId } = get();
+        const { plan, selectedFurnitureId, selectedOpeningId, selectedRoomId } = get();
         if (selectedFurnitureId) {
           const item = plan.furniture.find((entry) => entry.id === selectedFurnitureId);
           if (item) set({ clipboard: { type: "furniture", item: { ...item } } });
@@ -423,11 +386,76 @@ export const useStudioStore = create<StudioState>()(
         if (selectedOpeningId) {
           const opening = plan.openings.find((entry) => entry.id === selectedOpeningId);
           if (opening) set({ clipboard: { type: "opening", opening: { ...opening } } });
+          return;
+        }
+        if (selectedRoomId) {
+          const room = plan.rooms.find((entry) => entry.id === selectedRoomId);
+          if (!room) return;
+          set({
+            clipboard: {
+              type: "room",
+              room: { ...room },
+              openings: plan.openings
+                .filter((opening) => opening.roomId === room.id)
+                .map((opening) => ({ ...opening })),
+              furniture: plan.furniture
+                .filter((item) => item.roomId === room.id)
+                .map((item) => ({ ...item })),
+            },
+          });
         }
       },
       pasteClipboard: () => {
         const { brief, plan, clipboard, selectedRoomId, selectedFurnitureId } = get();
         if (!clipboard) return;
+
+        if (clipboard.type === "room") {
+          const ids = new Set([
+            ...plan.rooms.map((room) => room.id),
+            ...plan.openings.map((opening) => opening.id),
+            ...plan.furniture.map((item) => item.id),
+          ]);
+          const roomId = uniqueId(ids, clipboard.room.id);
+          ids.add(roomId);
+          const nextPlan: FloorPlan = {
+            ...plan,
+            rooms: [
+              ...plan.rooms,
+              {
+                ...clipboard.room,
+                id: roomId,
+                x: clipboard.room.x + plan.gridSize,
+                y: clipboard.room.y + plan.gridSize,
+              },
+            ],
+            openings: [
+              ...plan.openings,
+              ...clipboard.openings.map((opening) => {
+                const id = uniqueId(ids, opening.id);
+                ids.add(id);
+                return { ...opening, id, roomId };
+              }),
+            ],
+            furniture: [
+              ...plan.furniture,
+              ...clipboard.furniture.map((item) => {
+                const id = uniqueId(ids, item.id);
+                ids.add(id);
+                return { ...item, id, roomId };
+              }),
+            ],
+          };
+          set(
+            commitPlan(get, nextPlan, {
+              selectedRoomId: roomId,
+              selectedFurnitureId: null,
+              selectedOpeningId: null,
+              placingOpeningKind: null,
+            }),
+          );
+          return;
+        }
+
         const furnitureRoom =
           selectedFurnitureId &&
           plan.furniture.find((item) => item.id === selectedFurnitureId)?.roomId;
@@ -496,6 +524,54 @@ export const useStudioStore = create<StudioState>()(
         get().copySelected();
         get().pasteClipboard();
       },
+      beginHistoryGesture: () => {
+        const state = get();
+        if (state.historyGesture) return;
+        resetHistoryClock();
+        set({
+          historyGesture: true,
+          ...pushHistory(state.past, captureHistory(state), false),
+        });
+      },
+      endHistoryGesture: () => {
+        const state = get();
+        if (!state.historyGesture) return;
+        const last = state.past[state.past.length - 1];
+        const unused = last && plansMatch(last.plan, state.plan);
+        resetHistoryClock();
+        set({
+          historyGesture: false,
+          past: unused ? state.past.slice(0, -1) : state.past,
+        });
+      },
+      undo: () => {
+        const state = get();
+        if (state.past.length === 0) return;
+        resetHistoryClock();
+        const current = captureHistory(state);
+        const previous = state.past[state.past.length - 1];
+        set({
+          ...restoreHistory(previous),
+          past: state.past.slice(0, -1),
+          future: [...state.future, current],
+          historyGesture: false,
+          placingOpeningKind: null,
+        });
+      },
+      redo: () => {
+        const state = get();
+        if (state.future.length === 0) return;
+        resetHistoryClock();
+        const current = captureHistory(state);
+        const next = state.future[state.future.length - 1];
+        set({
+          ...restoreHistory(next),
+          future: state.future.slice(0, -1),
+          past: [...state.past, current],
+          historyGesture: false,
+          placingOpeningKind: null,
+        });
+      },
       clearSelection: () =>
         set({
           selectedRoomId: null,
@@ -552,8 +628,6 @@ export const useStudioStore = create<StudioState>()(
         set({
           brief: emptyBrief(),
           plan: emptyPlan(),
-          designs: emptyDesigns(),
-          activeDesign: 1,
           selectedRoomId: null,
           selectedFurnitureId: null,
           selectedOpeningId: null,
@@ -562,6 +636,9 @@ export const useStudioStore = create<StudioState>()(
           pendingExport: null,
           placingOpeningKind: null,
           clipboard: null,
+          past: [],
+          future: [],
+          historyGesture: false,
           view3dOpen: false,
           chatMessages: [],
         });
@@ -573,8 +650,6 @@ export const useStudioStore = create<StudioState>()(
       partialize: (state) => ({
         brief: state.brief,
         plan: state.plan,
-        designs: state.designs,
-        activeDesign: state.activeDesign,
         chatMessages: state.chatMessages,
         pendingQuestions:
           state.questionSource === "chat" ? state.pendingQuestions : null,
@@ -583,6 +658,9 @@ export const useStudioStore = create<StudioState>()(
         showRoomColors: state.showRoomColors,
         showDoors: state.showDoors,
         showObjects: state.showObjects,
+        clipboard: cloneClipboard(state.clipboard),
+        past: state.past,
+        future: state.future,
       }),
       merge: (persisted, current) => {
         const saved = persisted as Partial<StudioState> | undefined;
@@ -603,26 +681,11 @@ export const useStudioStore = create<StudioState>()(
               showDoors: current.showDoors,
               showObjects: current.showObjects,
             };
-        const restored = normalizeDesigns(
-          saved?.designs,
-          saved?.plan ?? current.plan,
-        );
-        const activeDesign = isDesignIndex(saved?.activeDesign)
-          ? saved.activeDesign
-          : 1;
-        if (saved?.plan) {
-          restored[activeDesign - 1] = {
-            ...restored[activeDesign - 1],
-            plan: normalizePlan(saved.plan),
-          };
-        }
         return {
           ...current,
           ...saved,
           brief: saved?.brief ?? current.brief,
-          designs: restored,
-          activeDesign,
-          plan: restored[activeDesign - 1]?.plan ?? current.plan,
+          plan: saved?.plan ? normalizePlan(saved.plan) : current.plan,
           chatMessages: Array.isArray(saved?.chatMessages)
             ? saved.chatMessages
             : current.chatMessages,
@@ -631,6 +694,10 @@ export const useStudioStore = create<StudioState>()(
           displayUnit: isDisplayUnit(saved?.displayUnit)
             ? saved.displayUnit
             : current.displayUnit,
+          clipboard: cloneClipboard(saved?.clipboard ?? current.clipboard),
+          past: normalizeHistoryList(saved?.past),
+          future: normalizeHistoryList(saved?.future),
+          historyGesture: false,
           ...layers,
         };
       },

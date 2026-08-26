@@ -12,12 +12,9 @@ import {
 import { sanitizeExportFilename } from "./export-name";
 import { slugId, uniqueId } from "./ids";
 import { DEFAULT_STREET_WIDTH, ensureSiteDefaults } from "./site-defaults";
-import { summarizeDesigns } from "./designs";
 import type {
   Brief,
   CommandResult,
-  DesignIndex,
-  DesignVariant,
   Edge,
   ExportFormat,
   FloorPlan,
@@ -220,39 +217,11 @@ export function commandApplyLayout(
     ...nextPlan.furniture.filter((item) => !roomIds.has(item.roomId)),
   ];
   const extras = added.length ? ` Added ${added.join(", ")}.` : "";
-  const variantLabel = input.variant ? `Design ${input.variant}` : "Layout";
-  const named = input.label ? ` (${input.label})` : "";
   const summary =
     unknownRooms.length > 0
-      ? `${variantLabel}${named}: applied ${nextPlan.rooms.length} rooms. Some openings/furniture reference unknown room ids.${extras}`
-      : `${variantLabel}${named}: ${nextPlan.rooms.length} rooms, ${nextPlan.openings.length} openings, ${nextPlan.furniture.length} furniture items.${extras}`;
-  return {
-    ...result(nextBrief, nextPlan, summary),
-    activeDesign: input.variant,
-    designLabel: input.label,
-    designConcept: input.concept,
-  };
-}
-
-export function commandSwitchDesign(
-  brief: Brief,
-  designs: DesignVariant[],
-  variant: DesignIndex,
-): CommandResult {
-  const slot = designs.find((design) => design.index === variant);
-  const plan = slot?.plan ?? emptyPlan();
-  const snapshot = result(brief, plan, "");
-  return {
-    ...snapshot,
-    activeDesign: variant,
-    designLabel: slot?.label,
-    designConcept: slot?.concept,
-    designSummaries: summarizeDesigns(designs),
-    summary:
-      plan.rooms.length > 0
-        ? `Showing design ${variant}${slot?.label ? ` (${slot.label})` : ""}${slot?.concept ? `: ${slot.concept}` : ""}.`
-        : `Design ${variant} is empty.`,
-  };
+      ? `Applied layout with ${nextPlan.rooms.length} rooms. Some openings/furniture reference unknown room ids.${extras}`
+      : `Applied layout with ${nextPlan.rooms.length} rooms, ${nextPlan.openings.length} openings, ${nextPlan.furniture.length} furniture items.${extras}`;
+  return result(nextBrief, nextPlan, summary);
 }
 
 export function commandAddRoom(

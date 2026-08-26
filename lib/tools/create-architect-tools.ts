@@ -1,5 +1,5 @@
 import { tool } from "ai";
-import type { Brief, ClarifyingQuestion, DesignIndex, DesignVariant, FloorPlan } from "@/lib/floor-plan/types";
+import type { Brief, ClarifyingQuestion, FloorPlan } from "@/lib/floor-plan/types";
 import {
   commandAddFurniture,
   commandAddOpening,
@@ -20,11 +20,9 @@ import {
   commandResizeOpening,
   commandResizeWall,
   commandSetPlot,
-  commandSwitchDesign,
   commandUpdateBrief,
   commandUpdateRoom,
 } from "@/lib/floor-plan/commands";
-import { summarizeDesigns, syncActiveDesign } from "@/lib/floor-plan/designs";
 import { DESIGN_RULES_FOR_AGENTS, DESIGN_RULES_REFERENCE } from "@/lib/floor-plan/design-rules";
 import { toolInputSchemas } from "@/lib/floor-plan/schema";
 import { TOOL_DESCRIPTIONS } from "./catalog";
@@ -32,27 +30,15 @@ import { TOOL_DESCRIPTIONS } from "./catalog";
 export type StudioContext = {
   brief: Brief;
   plan: FloorPlan;
-  designs: DesignVariant[];
-  activeDesign: DesignIndex;
 };
 
 function commit(
   ctx: StudioContext,
   result: ReturnType<typeof commandGetBrief>,
 ) {
-  const activeDesign = result.activeDesign ?? ctx.activeDesign;
   ctx.brief = result.brief;
   ctx.plan = result.plan;
-  ctx.activeDesign = activeDesign;
-  ctx.designs = syncActiveDesign(ctx.designs, activeDesign, result.plan, {
-    label: result.designLabel,
-    concept: result.designConcept,
-  });
-  return {
-    ...result,
-    activeDesign,
-    designSummaries: summarizeDesigns(ctx.designs),
-  };
+  return result;
 }
 
 export function createArchitectTools(ctx: StudioContext) {
@@ -60,17 +46,7 @@ export function createArchitectTools(ctx: StudioContext) {
     get_brief: tool({
       description: TOOL_DESCRIPTIONS.get_brief,
       inputSchema: toolInputSchemas.get_brief,
-      execute: async () => {
-        const snapshot = commandGetBrief(ctx.brief, ctx.plan);
-        const summaries = summarizeDesigns(ctx.designs);
-        const filled = summaries.filter((item) => item.roomCount > 0).length;
-        return {
-          ...snapshot,
-          activeDesign: ctx.activeDesign,
-          designSummaries: summaries,
-          summary: `${snapshot.summary} Viewing design ${ctx.activeDesign}. ${filled}/3 layouts filled.`,
-        };
-      },
+      execute: async () => commandGetBrief(ctx.brief, ctx.plan),
     }),
     get_design_rules: tool({
       description: TOOL_DESCRIPTIONS.get_design_rules,
@@ -107,17 +83,7 @@ export function createArchitectTools(ctx: StudioContext) {
     get_floor_plan: tool({
       description: TOOL_DESCRIPTIONS.get_floor_plan,
       inputSchema: toolInputSchemas.get_floor_plan,
-      execute: async () => {
-        const snapshot = commandGetFloorPlan(ctx.brief, ctx.plan);
-        return {
-          ...snapshot,
-          activeDesign: ctx.activeDesign,
-          designLabel: ctx.designs[ctx.activeDesign - 1]?.label,
-          designConcept: ctx.designs[ctx.activeDesign - 1]?.concept,
-          designSummaries: summarizeDesigns(ctx.designs),
-          summary: `Design ${ctx.activeDesign}: ${snapshot.summary}`,
-        };
-      },
+      execute: async () => commandGetFloorPlan(ctx.brief, ctx.plan),
     }),
     set_plot: tool({
       description: TOOL_DESCRIPTIONS.set_plot,
@@ -128,17 +94,8 @@ export function createArchitectTools(ctx: StudioContext) {
     apply_layout: tool({
       description: TOOL_DESCRIPTIONS.apply_layout,
       inputSchema: toolInputSchemas.apply_layout,
-      execute: async (input) => commit(ctx, commandApplyLayout(ctx.brief, ctx.plan, input)),
-    }),
-    switch_design: tool({
-      description: TOOL_DESCRIPTIONS.switch_design,
-      inputSchema: toolInputSchemas.switch_design,
-      execute: async ({ variant }) => {
-        const snapshot = commandSwitchDesign(ctx.brief, ctx.designs, variant);
-        ctx.plan = snapshot.plan;
-        ctx.activeDesign = variant;
-        return snapshot;
-      },
+      execute: async (input) =>
+        commit(ctx, commandApplyLayout(ctx.brief, ctx.plan, input)),
     }),
     add_room: tool({
       description: TOOL_DESCRIPTIONS.add_room,

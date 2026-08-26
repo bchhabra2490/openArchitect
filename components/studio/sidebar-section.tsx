@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function SidebarSection({
@@ -36,7 +36,7 @@ export function SidebarSection({
           <span className="truncate">{title}</span>
           {badge}
         </span>
-        <ChevronDown
+        <ChevronUp
           aria-hidden
           className={cn(
             "size-3.5 shrink-0 text-muted-foreground transition-transform",

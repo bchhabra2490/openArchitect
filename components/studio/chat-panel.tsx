@@ -75,8 +75,8 @@ export function ChatPanel() {
       new DefaultChatTransport<ArchitectUIMessage>({
         api: "/api/chat",
         body: () => {
-          const { brief, plan, designs, activeDesign } = useStudioStore.getState();
-          return { brief, plan, designs, activeDesign };
+          const { brief, plan } = useStudioStore.getState();
+          return { brief, plan };
         },
       }),
     [],
@@ -135,9 +135,8 @@ export function ChatPanel() {
           <div className="flex flex-col gap-3 pr-2">
             {messages.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Example: “3BHK apartment, about 1200 sqft, open kitchen facing the living
-                room, two bathrooms.” The architect will draw three alternative layouts.
-                Turn on Dictation to speak instead of type.
+              Example: “3BHK apartment, about 1200 sqft, open kitchen facing the living
+              room, two bathrooms.” Turn on Dictation to speak instead of type.
               </p>
             ) : null}
             {messages.map((message) => (

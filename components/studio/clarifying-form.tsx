@@ -38,37 +38,39 @@ export function ClarifyingForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-      {questions.map((question) => (
-        <div key={question.id} className="flex flex-col gap-1">
-          <Label htmlFor={question.id} className="text-xs">
-            {question.prompt}
-          </Label>
-          {question.type === "choice" && question.options?.length ? (
-            <select
-              id={question.id}
-              className="h-8 rounded-lg border border-input bg-background px-2 text-sm"
-              value={values[question.id] ?? ""}
-              onChange={(event) => update(question.id, event.target.value)}
-            >
-              <option value="">Select…</option>
-              {question.options.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <Input
-              id={question.id}
-              type={question.type === "number" ? "number" : "text"}
-              value={values[question.id] ?? ""}
-              onChange={(event) => update(question.id, event.target.value)}
-            />
-          )}
-        </div>
-      ))}
-      <Button type="submit" size="sm">
+    <form onSubmit={handleSubmit} className="flex max-h-56 flex-col gap-2">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+        {questions.map((question) => (
+          <div key={question.id} className="flex flex-col gap-1">
+            <Label htmlFor={question.id} className="text-xs">
+              {question.prompt}
+            </Label>
+            {question.type === "choice" && question.options?.length ? (
+              <select
+                id={question.id}
+                className="h-8 rounded-lg border border-input bg-background px-2 text-sm"
+                value={values[question.id] ?? ""}
+                onChange={(event) => update(question.id, event.target.value)}
+              >
+                <option value="">Select…</option>
+                {question.options.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <Input
+                id={question.id}
+                type={question.type === "number" ? "number" : "text"}
+                value={values[question.id] ?? ""}
+                onChange={(event) => update(question.id, event.target.value)}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+      <Button type="submit" size="sm" className="shrink-0">
         Send answers
       </Button>
     </form>

@@ -91,23 +91,6 @@ export interface ValidationIssue {
   entityId?: string;
 }
 
-export const DESIGN_INDEXES = [1, 2, 3] as const;
-export type DesignIndex = (typeof DESIGN_INDEXES)[number];
-
-export interface DesignVariant {
-  index: DesignIndex;
-  label: string;
-  concept: string;
-  plan: FloorPlan;
-}
-
-export interface DesignSummary {
-  index: DesignIndex;
-  label: string;
-  concept: string;
-  roomCount: number;
-}
-
 export interface CommandResult {
   plan: FloorPlan;
   brief: Brief;
@@ -115,10 +98,6 @@ export interface CommandResult {
   summary: string;
   exportFile?: PlanExport;
   view3d?: { filename: string };
-  activeDesign?: DesignIndex;
-  designLabel?: string;
-  designConcept?: string;
-  designSummaries?: DesignSummary[];
 }
 
 export const EXPORT_FORMATS = ["png", "pdf"] as const;
@@ -131,4 +110,10 @@ export interface PlanExport {
 
 export type StudioClipboard =
   | { type: "furniture"; item: FurnitureItem }
-  | { type: "opening"; opening: Opening };
+  | { type: "opening"; opening: Opening }
+  | {
+      type: "room";
+      room: Room;
+      openings: Opening[];
+      furniture: FurnitureItem[];
+    };

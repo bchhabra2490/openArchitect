@@ -11,7 +11,6 @@ import {
 } from "react";
 import { Scan } from "lucide-react";
 import { CanvasInspector } from "@/components/studio/canvas-inspector";
-import { DesignSwitcher } from "@/components/studio/design-switcher";
 import { ExportButtons } from "@/components/studio/export-buttons";
 import { BlockSizeSlider } from "@/components/studio/block-size-slider";
 import { LayerToggles } from "@/components/studio/layer-toggles";
@@ -635,8 +634,16 @@ function PlanSvg({
     (state) => state.resizeSelectedFurniture,
   );
   const addOpeningOnWall = useStudioStore((state) => state.addOpeningOnWall);
+  const beginHistoryGesture = useStudioStore((state) => state.beginHistoryGesture);
+  const endHistoryGesture = useStudioStore((state) => state.endHistoryGesture);
   const moveSelectedOpening = useStudioStore((state) => state.moveSelectedOpening);
   const resizeSelectedOpening = useStudioStore((state) => state.resizeSelectedOpening);
+
+  function startDrag(next: DragState) {
+    beginHistoryGesture();
+    drag.current = next;
+  }
+
   const displayUnit = useStudioStore((state) => state.displayUnit);
   const showRoomColors = useStudioStore((state) => state.showRoomColors);
   const showDoors = useStudioStore((state) => state.showDoors);
@@ -713,6 +720,7 @@ function PlanSvg({
       }
     }
     function onUp() {
+      if (drag.current) endHistoryGesture();
       drag.current = null;
     }
     window.addEventListener("pointermove", onMove);
@@ -724,6 +732,7 @@ function PlanSvg({
       window.removeEventListener("pointercancel", onUp);
     };
   }, [
+    endHistoryGesture,
     moveSelectedFurniture,
     moveSelectedOpening,
     moveSelectedRoom,
@@ -769,14 +778,14 @@ function PlanSvg({
             const svg = svgRef.current;
             if (!svg) return;
             const meters = clientToMeters(event.clientX, event.clientY, svg);
-            drag.current = {
+            startDrag({
               type: "room",
               roomId: room.id,
               startX: meters.x,
               startY: meters.y,
               origX: room.x,
               origY: room.y,
-            };
+            });
           }}
         />
       ))}
@@ -794,25 +803,25 @@ function PlanSvg({
               const svg = svgRef.current;
               if (!svg) return;
               const meters = clientToMeters(event.clientX, event.clientY, svg);
-              drag.current = {
+              startDrag({
                 type: "furniture",
                 startX: meters.x,
                 startY: meters.y,
                 origX: item.x,
                 origY: item.y,
-              };
+              });
             }}
             onResizeStart={(event) => {
               const svg = svgRef.current;
               if (!svg) return;
               const meters = clientToMeters(event.clientX, event.clientY, svg);
-              drag.current = {
+              startDrag({
                 type: "furniture-resize",
                 startX: meters.x,
                 startY: meters.y,
                 origW: item.width,
                 origH: item.height,
-              };
+              });
             }}
           />
         );
@@ -826,7 +835,7 @@ function PlanSvg({
               onEdgePointerDown={(edge, event) => {
                 event.preventDefault();
                 event.stopPropagation();
-                drag.current = { type: "wall", roomId: selectedRoom.id, edge };
+                startDrag({ type: "wall", roomId: selectedRoom.id, edge });
               }}
             />
           ) : null}
@@ -848,16 +857,16 @@ function PlanSvg({
               const meters = clientToMeters(event.clientX, event.clientY, svg);
               const along = offsetAlongEdge(room, opening.edge, meters.x, meters.y);
               const width = Math.max(opening.width, 0.01);
-              drag.current = {
+              startDrag({
                 type: "opening",
                 openingId: opening.id,
                 roomId: room.id,
                 grabT: (along - opening.offset) / width,
-              };
+              });
             }}
             onResizeStart={(end) => {
               if (placingOpeningKind) return;
-              drag.current = {
+              startDrag({
                 type: "opening-resize",
                 openingId: opening.id,
                 roomId: room.id,
@@ -865,7 +874,7 @@ function PlanSvg({
                 end,
                 origOffset: opening.offset,
                 origWidth: opening.width,
-              };
+              });
             }}
           />
         );
@@ -925,7 +934,6 @@ function PlanSvg({
 
 export function FloorPlanCanvas() {
   const plan = useStudioStore((state) => state.plan);
-  const designs = useStudioStore((state) => state.designs);
   const selectedRoomId = useStudioStore((state) => state.selectedRoomId);
   const selectedFurnitureId = useStudioStore((state) => state.selectedFurnitureId);
   const selectedOpeningId = useStudioStore((state) => state.selectedOpeningId);
@@ -962,12 +970,7 @@ export function FloorPlanCanvas() {
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
-      if (
-        target &&
-        (target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.isContentEditable)
-      ) {
+      if (target?.closest("input, textarea, select, [contenteditable='true']")) {
         return;
       }
       const state = useStudioStore.getState();
@@ -982,7 +985,7 @@ export function FloorPlanCanvas() {
       const meta = event.metaKey || event.ctrlKey;
       const key = event.key.toLowerCase();
       if (meta && key === "c") {
-        if (state.selectedFurnitureId || state.selectedOpeningId) {
+        if (state.selectedFurnitureId || state.selectedOpeningId || state.selectedRoomId) {
           event.preventDefault();
           state.copySelected();
         }
@@ -995,8 +998,19 @@ export function FloorPlanCanvas() {
         }
         return;
       }
+      if (meta && key === "z") {
+        event.preventDefault();
+        if (event.shiftKey) state.redo();
+        else state.undo();
+        return;
+      }
+      if (meta && key === "y") {
+        event.preventDefault();
+        state.redo();
+        return;
+      }
       if (meta && key === "d") {
-        if (state.selectedFurnitureId || state.selectedOpeningId) {
+        if (state.selectedFurnitureId || state.selectedOpeningId || state.selectedRoomId) {
           event.preventDefault();
           state.duplicateSelected();
         }
@@ -1043,17 +1057,13 @@ export function FloorPlanCanvas() {
           />
         </div>
       </div>
-      {plan.rooms.length === 0 &&
-      designs.every((design) => design.plan.rooms.length === 0) ? (
+      {plan.rooms.length === 0 ? (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <p className="rounded-full bg-background/80 px-4 py-2 text-sm text-muted-foreground shadow-sm">
-            Describe a home in chat. Three alternative layouts will appear here.
+            Describe a home in chat. Rooms will appear here.
           </p>
         </div>
       ) : null}
-      <div className="pointer-events-none absolute top-3 left-1/2 z-10 -translate-x-1/2">
-        <DesignSwitcher />
-      </div>
       <div className="pointer-events-none absolute top-3 left-3 flex flex-col items-start gap-2">
         <BlockSizeSlider />
         <Button
@@ -1077,7 +1087,7 @@ export function FloorPlanCanvas() {
         <CanvasInspector />
         {plan.rooms.length > 0 ? (
           <p className="hidden rounded-xl bg-background/80 px-3 py-2 text-xs text-muted-foreground sm:block">
-            Scroll to zoom · drag rooms to move · ⌘C / ⌘V copy objects
+            Scroll to zoom · drag rooms to move · ⌘Z undo · ⌘⇧Z redo · ⌘C / ⌘V copy
           </p>
         ) : null}
       </div>

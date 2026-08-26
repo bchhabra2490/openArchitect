@@ -10,8 +10,6 @@ import { useStudioStore } from "@/lib/store/use-studio-store";
 
 export function ExportButtons() {
   const plan = useStudioStore((state) => state.plan);
-  const activeDesign = useStudioStore((state) => state.activeDesign);
-  const designs = useStudioStore((state) => state.designs);
   const displayUnit = useStudioStore((state) => state.displayUnit);
   const showRoomColors = useStudioStore((state) => state.showRoomColors);
   const showDoors = useStudioStore((state) => state.showDoors);
@@ -20,9 +18,6 @@ export function ExportButtons() {
   const [busy, setBusy] = useState<ExportFormat | null>(null);
   const [error, setError] = useState<string | null>(null);
   const disabled = plan.rooms.length === 0 || busy !== null;
-  const slug =
-    designs.find((design) => design.index === activeDesign)?.label ??
-    `design-${activeDesign}`;
 
   async function exportAs(format: ExportFormat) {
     setError(null);
@@ -31,7 +26,7 @@ export function ExportButtons() {
       await downloadPlanExport(
         plan,
         format,
-        sanitizeExportFilename(slug, format),
+        sanitizeExportFilename("floor-plan", format),
         displayUnit,
         {
           roomColors: showRoomColors,
@@ -56,7 +51,7 @@ export function ExportButtons() {
           disabled={plan.rooms.length === 0}
           aria-label="Generate 3D view of the floor plan"
           title={plan.rooms.length === 0 ? "Draw a layout first" : "Generate 3D"}
-          onClick={() => openView3d(sanitizeExportFilename(slug, "glb"))}
+          onClick={() => openView3d(sanitizeExportFilename("floor-plan", "glb"))}
         >
           <Box data-icon="inline-start" />
           3D

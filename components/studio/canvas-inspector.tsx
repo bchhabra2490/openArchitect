@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, Layers2 } from "lucide-react";
+import { Copy, Layers2, Redo2, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FURNITURE_CATALOG } from "@/lib/floor-plan/furniture-catalog";
@@ -52,6 +52,39 @@ function MeasureField({
       />
       <span>{unit}</span>
     </label>
+  );
+}
+
+function HistoryButtons() {
+  const undo = useStudioStore((state) => state.undo);
+  const redo = useStudioStore((state) => state.redo);
+  const canUndo = useStudioStore((state) => state.past.length > 0);
+  const canRedo = useStudioStore((state) => state.future.length > 0);
+  return (
+    <>
+      <Button
+        type="button"
+        size="xs"
+        variant="outline"
+        disabled={!canUndo}
+        onClick={undo}
+        title="Undo (⌘Z)"
+      >
+        <Undo2 data-icon="inline-start" />
+        Undo
+      </Button>
+      <Button
+        type="button"
+        size="xs"
+        variant="outline"
+        disabled={!canRedo}
+        onClick={redo}
+        title="Redo (⌘⇧Z)"
+      >
+        <Redo2 data-icon="inline-start" />
+        Redo
+      </Button>
+    </>
   );
 }
 
@@ -133,7 +166,7 @@ export function CanvasInspector() {
           placeholder="Object name"
         />
         <p className="mt-1 text-[11px] text-muted-foreground">
-          Drag to move · corner to resize · ⌘C / ⌘V to copy
+          Drag to move · corner to resize · ⌘Z undo · ⌘C / ⌘V copy
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <MeasureField
@@ -165,6 +198,7 @@ export function CanvasInspector() {
           ))}
         </div>
         <div className="mt-2 flex flex-wrap gap-1">
+          <HistoryButtons />
           <ClipboardButtons />
           <Button
             type="button"
@@ -205,6 +239,7 @@ export function CanvasInspector() {
           >
             Window
           </Button>
+          <HistoryButtons />
           <ClipboardButtons />
           <Button
             type="button"
@@ -300,6 +335,8 @@ export function CanvasInspector() {
         ) : null}
         <p className="mt-2 text-[11px] font-medium text-muted-foreground">Add to room</p>
         <div className="mt-1 flex flex-wrap gap-1">
+          <HistoryButtons />
+          <ClipboardButtons />
           <Button type="button" size="xs" variant="outline" onClick={() => placeKind("door")}>
             Door
           </Button>
@@ -331,10 +368,11 @@ export function CanvasInspector() {
     return (
       <div className="pointer-events-auto rounded-xl border bg-background/95 p-3 shadow-sm">
         <p className="text-xs text-muted-foreground">
-          Click a room to rename or furnish it. Drag a room to move it. Copy objects with ⌘C /
-          ⌘V.
+          Click a room to rename or furnish it. Drag a room to move it. ⌘Z undo · ⌘⇧Z redo ·
+          ⌘C / ⌘V copy.
         </p>
-        <div className="mt-2 flex gap-1">
+        <div className="mt-2 flex flex-wrap gap-1">
+          <HistoryButtons />
           <Button type="button" size="xs" variant="outline" onClick={() => placeKind("door")}>
             Add door
           </Button>

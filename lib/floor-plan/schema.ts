@@ -72,30 +72,7 @@ export const setPlotInputSchema = z.object({
   height: z.number().positive().describe("Plot height in meters"),
 });
 
-export const designIndexSchema = z.union([z.literal(1), z.literal(2), z.literal(3)]);
-
-export const switchDesignInputSchema = z.object({
-  variant: designIndexSchema.describe("Which of the three designs to show on the canvas"),
-});
-
 export const applyLayoutInputSchema = z.object({
-  variant: designIndexSchema
-    .optional()
-    .describe(
-      "Which of the 3 designs to write (1, 2, or 3). Pass this when generating alternatives. Omit to replace the currently visible design.",
-    ),
-  label: z
-    .string()
-    .min(1)
-    .max(40)
-    .optional()
-    .describe("Short name for this alternative, e.g. Day-night split"),
-  concept: z
-    .string()
-    .min(1)
-    .max(180)
-    .optional()
-    .describe("One sentence on how this layout differs from the other two"),
   plot: z
     .object({
       width: z.number().positive(),
@@ -248,7 +225,6 @@ export const toolInputSchemas = {
   get_floor_plan: emptyInputSchema,
   set_plot: setPlotInputSchema,
   apply_layout: applyLayoutInputSchema,
-  switch_design: switchDesignInputSchema,
   add_room: addRoomInputSchema,
   update_room: updateRoomInputSchema,
   remove_room: removeByIdInputSchema,
