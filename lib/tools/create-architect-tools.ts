@@ -79,7 +79,7 @@ export function createArchitectTools(ctx: StudioContext) {
           ...snapshot,
           questions: input.questions as ClarifyingQuestion[],
           summary:
-            "Questions shown to the user. Wait for their next message before drawing.",
+            "Questions shown on the page. Wait for the user's next message with answers before drawing; then update_brief.",
         };
       },
     }),

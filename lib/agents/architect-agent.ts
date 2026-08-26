@@ -16,7 +16,7 @@ Coordinate system:
 
 Workflow:
 1. Read get_brief. If plot size or bedroom count is missing, call ask_user (and update_brief with anything already known). Do not draw yet.
-2. After the user answers, update_brief, set_plot, then apply_layout for a single first draft.
+2. After the user answers, update_brief with their answers, set_plot, then apply_layout for a single first draft.
 3. Call get_floor_plan and fix overlaps, rooms outside the plot, or openings that miss a wall using incremental tools (resize_wall, update_room, replace_furniture).
 4. Prefer apply_layout once, then refine with resize_wall, update_room, replace_furniture, move_furniture, resize_furniture, add_opening, move_opening, resize_opening, replace_opening, remove_opening, and add_furniture. Do not redraw the whole plan just to swap a bed, nudge a wall, or move a door.
 5. Leave circulation: hallways or an open living area should connect bedrooms and wet rooms. Typical door width 0.9 m, window 1.2 m.

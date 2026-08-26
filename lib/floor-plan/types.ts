@@ -98,6 +98,7 @@ export interface CommandResult {
   summary: string;
   exportFile?: PlanExport;
   view3d?: { filename: string };
+  questions?: ClarifyingQuestion[];
 }
 
 export const EXPORT_FORMATS = ["png", "pdf"] as const;

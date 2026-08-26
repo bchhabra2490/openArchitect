@@ -119,7 +119,10 @@ type StudioState = {
   undo: () => void;
   redo: () => void;
   clearSelection: () => void;
-  setPendingQuestions: (questions: ClarifyingQuestion[] | null) => void;
+  setPendingQuestions: (
+    questions: ClarifyingQuestion[] | null,
+    source?: QuestionSource,
+  ) => void;
   waitForAnswers: (
     questions: ClarifyingQuestion[],
     signal?: AbortSignal,
@@ -652,10 +655,10 @@ export const useStudioStore = create<StudioState>()(
           selectedOpeningId: null,
           placingOpeningKind: null,
         }),
-      setPendingQuestions: (questions) =>
+      setPendingQuestions: (questions, source = "chat") =>
         set({
           pendingQuestions: questions,
-          questionSource: questions ? "chat" : null,
+          questionSource: questions ? source : null,
         }),
       waitForAnswers: (questions, signal) => {
         waiter?.reject(new Error("Replaced by a newer question set."));
@@ -690,6 +693,7 @@ export const useStudioStore = create<StudioState>()(
           ...get().brief,
           answers: { ...get().brief.answers, ...answers },
         };
+        // Resolve any blocking waiter (legacy) and clear the form.
         set({ brief, pendingQuestions: null, questionSource: null });
         waiter?.resolve(answers);
         waiter = null;
