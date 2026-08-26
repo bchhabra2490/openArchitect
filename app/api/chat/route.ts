@@ -14,6 +14,16 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  if (!process.env.OPENAI_API_KEY?.trim()) {
+    return Response.json(
+      {
+        error:
+          "In-app chat is disabled. Set OPENAI_API_KEY, or use the WebMCP extension in Chrome.",
+      },
+      { status: 503 },
+    );
+  }
+
   const json = await request.json();
   const body = bodySchema.parse(json);
   const briefParsed = briefSchema.safeParse(body.brief);

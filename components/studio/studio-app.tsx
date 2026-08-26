@@ -12,7 +12,7 @@ import { useExportDownload } from "@/hooks/use-export-download";
 import { useWebMcpTools } from "@/hooks/use-webmcp-tools";
 import { useStudioStore } from "@/lib/store/use-studio-store";
 
-export function StudioApp() {
+export function StudioApp({ chatEnabled = false }: { chatEnabled?: boolean }) {
   const [hydrated, setHydrated] = useState(
     () => useStudioStore.persist?.hasHydrated() ?? false,
   );
@@ -79,7 +79,7 @@ export function StudioApp() {
         {sidebarOpen ? (
           <aside className="flex h-[42vh] w-full shrink-0 flex-col border-b p-3 md:h-auto md:w-[380px] md:border-r md:border-b-0">
             {hydrated ? (
-              <ChatPanel key={chatKey} />
+              <ChatPanel key={chatKey} chatEnabled={chatEnabled} />
             ) : (
               <p className="text-sm text-muted-foreground">Restoring session…</p>
             )}
