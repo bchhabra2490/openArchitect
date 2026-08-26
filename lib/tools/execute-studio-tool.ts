@@ -23,6 +23,7 @@ import {
   commandSetPlot,
   commandUpdateBrief,
   commandUpdateRoom,
+  commandSetDisplayLayers,
 } from "@/lib/floor-plan/commands";
 import { DESIGN_RULES_FOR_AGENTS, DESIGN_RULES_REFERENCE } from "@/lib/floor-plan/design-rules";
 import { emptyBrief } from "@/lib/floor-plan/defaults";
@@ -243,6 +244,13 @@ export async function executeStudioTool(
       result = commandImportProject(state.brief, state.plan, parsed);
       break;
     }
+    case "set_display_layers":
+      result = commandSetDisplayLayers(
+        state.brief,
+        state.plan,
+        parse(toolInputSchemas.set_display_layers, rawInput),
+      );
+      break;
     case "generate_3d":
       result = commandGenerate3d(
         state.brief,

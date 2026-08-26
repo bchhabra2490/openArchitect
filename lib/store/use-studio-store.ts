@@ -77,7 +77,9 @@ type StudioState = {
   showRoomColors: boolean;
   showDoors: boolean;
   showObjects: boolean;
-  applyResult: (result: Pick<CommandResult, "brief" | "plan" | "exportFile" | "view3d">) => void;
+  applyResult: (
+    result: Pick<CommandResult, "brief" | "plan" | "exportFile" | "view3d" | "displayLayers">,
+  ) => void;
   setChatMessages: (messages: UIMessage[]) => void;
   setDisplayUnit: (unit: DisplayUnit) => void;
   setShowRoomColors: (show: boolean) => void;
@@ -185,8 +187,20 @@ export const useStudioStore = create<StudioState>()(
       showDoors: true,
       showObjects: true,
       applyResult: (result) => {
+        if (result.displayLayers) {
+          const layers = result.displayLayers;
+          if (layers.roomColors !== undefined) get().setShowRoomColors(layers.roomColors);
+          if (layers.doors !== undefined) get().setShowDoors(layers.doors);
+          if (layers.objects !== undefined) get().setShowObjects(layers.objects);
+        }
         const { selectedRoomId, selectedFurnitureId, selectedOpeningId } = get();
         const plan = normalizePlan(result.plan);
+        const onlyLayers =
+          Boolean(result.displayLayers) &&
+          plansMatch(get().plan, plan) &&
+          !result.exportFile &&
+          !result.view3d;
+        if (onlyLayers) return;
         set(
           commitPlan(get, plan, {
             brief: result.brief,

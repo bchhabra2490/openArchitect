@@ -99,6 +99,11 @@ export interface CommandResult {
   exportFile?: PlanExport;
   view3d?: { filename: string };
   questions?: ClarifyingQuestion[];
+  displayLayers?: Partial<{
+    roomColors: boolean;
+    doors: boolean;
+    objects: boolean;
+  }>;
 }
 
 export const EXPORT_FORMATS = ["png", "pdf"] as const;

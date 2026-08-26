@@ -541,6 +541,35 @@ export function commandGetStandardsCheck(brief: Brief, plan: FloorPlan): Command
   };
 }
 
+export function commandSetDisplayLayers(
+  brief: Brief,
+  plan: FloorPlan,
+  input: {
+    roomColors?: boolean;
+    doors?: boolean;
+    objects?: boolean;
+  },
+): CommandResult {
+  const parts: string[] = [];
+  if (input.roomColors !== undefined) {
+    parts.push(`colors ${input.roomColors ? "on" : "off"}`);
+  }
+  if (input.doors !== undefined) {
+    parts.push(`doors ${input.doors ? "on" : "off"}`);
+  }
+  if (input.objects !== undefined) {
+    parts.push(`objects ${input.objects ? "on" : "off"}`);
+  }
+  return {
+    ...result(brief, plan, `Display layers updated: ${parts.join(", ")}.`),
+    displayLayers: {
+      roomColors: input.roomColors,
+      doors: input.doors,
+      objects: input.objects,
+    },
+  };
+}
+
 export function commandExportPlan(
   brief: Brief,
   plan: FloorPlan,

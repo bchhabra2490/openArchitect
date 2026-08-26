@@ -28,6 +28,7 @@ export const TOOL_TITLES: Record<ToolName, string> = {
   export_pdf: "Export PDF",
   export_project: "Export project JSON",
   import_project: "Import project JSON",
+  set_display_layers: "Set display layers",
   generate_3d: "Generate 3D",
 };
 
@@ -78,6 +79,8 @@ export const TOOL_DESCRIPTIONS: Record<ToolName, string> = {
     "Download the current brief + floor plan as an OpenArchitect JSON project file the user can re-import later. Optional filename.",
   import_project:
     "Replace the canvas with a project JSON payload (plan required; brief optional). Accepts OpenArchitect exports or a bare plan object.",
+  set_display_layers:
+    "Toggle canvas display layers: roomColors (fill colors), doors (door openings), and objects (furniture/fixtures). Pass only the layers you want to change. Does not modify the floor plan data.",
   generate_3d:
     "Build an interactive 3D dollhouse from the current floor plan (extruded rooms, walls, doors, windows, furniture). Opens the 3D viewer so the user can orbit it and download a GLB. Optional filename for the GLB. Call this when the user asks to see the house in 3D, generate 3D, or export a 3D model.",
 };

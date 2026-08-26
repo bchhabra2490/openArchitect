@@ -25,6 +25,7 @@ import {
   commandSetPlot,
   commandUpdateBrief,
   commandUpdateRoom,
+  commandSetDisplayLayers,
 } from "@/lib/floor-plan/commands";
 import { DESIGN_RULES_FOR_AGENTS, DESIGN_RULES_REFERENCE } from "@/lib/floor-plan/design-rules";
 import { toolInputSchemas } from "@/lib/floor-plan/schema";
@@ -228,6 +229,12 @@ export function createArchitectTools(ctx: StudioContext) {
           }),
         );
       },
+    }),
+    set_display_layers: tool({
+      description: TOOL_DESCRIPTIONS.set_display_layers,
+      inputSchema: toolInputSchemas.set_display_layers,
+      execute: async (input) =>
+        commit(ctx, commandSetDisplayLayers(ctx.brief, ctx.plan, input)),
     }),
     generate_3d: tool({
       description: TOOL_DESCRIPTIONS.generate_3d,

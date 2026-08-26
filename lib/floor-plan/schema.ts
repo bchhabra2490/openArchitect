@@ -186,6 +186,29 @@ export const exportPlanInputSchema = z.object({
     .describe("Download name without path, e.g. 3bhk-ground-floor. Extension is added."),
 });
 
+export const setDisplayLayersInputSchema = z
+  .object({
+    roomColors: z
+      .boolean()
+      .optional()
+      .describe("Show or hide room fill colors on the 2D/3D canvas."),
+    doors: z
+      .boolean()
+      .optional()
+      .describe("Show or hide doors on walls (windows stay visible)."),
+    objects: z
+      .boolean()
+      .optional()
+      .describe("Show or hide furniture and fixture blocks."),
+  })
+  .refine(
+    (value) =>
+      value.roomColors !== undefined ||
+      value.doors !== undefined ||
+      value.objects !== undefined,
+    { message: "Provide at least one of roomColors, doors, or objects." },
+  );
+
 export const emptyInputSchema = z.object({});
 
 export const briefSchema = z.object({
@@ -251,6 +274,7 @@ export const toolInputSchemas = {
   export_pdf: exportPlanInputSchema,
   export_project: exportPlanInputSchema,
   import_project: importProjectInputSchema,
+  set_display_layers: setDisplayLayersInputSchema,
   generate_3d: exportPlanInputSchema,
 } as const;
 
