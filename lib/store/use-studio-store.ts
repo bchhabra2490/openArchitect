@@ -65,6 +65,7 @@ type StudioState = {
   selectedFurnitureId: string | null;
   selectedOpeningId: string | null;
   placingOpeningKind: OpeningKind | null;
+  measureMode: boolean;
   clipboard: StudioClipboard | null;
   past: HistorySnapshot[];
   future: HistorySnapshot[];
@@ -111,6 +112,7 @@ type StudioState = {
   removeSelectedFurniture: () => void;
   replaceSelectedOpening: (kind: OpeningKind) => void;
   setPlacingOpeningKind: (kind: OpeningKind | null) => void;
+  setMeasureMode: (on: boolean) => void;
   addOpeningOnWall: (roomId: string, edge: Edge, kind: OpeningKind, along: number) => void;
   moveSelectedOpening: (offset: number, edge?: Edge) => void;
   resizeSelectedOpening: (width: number, offset?: number) => void;
@@ -174,6 +176,7 @@ export const useStudioStore = create<StudioState>()(
       selectedFurnitureId: null,
       selectedOpeningId: null,
       placingOpeningKind: null,
+      measureMode: false,
       clipboard: null,
       past: [],
       future: [],
@@ -437,9 +440,18 @@ export const useStudioStore = create<StudioState>()(
       setPlacingOpeningKind: (kind) =>
         set({
           placingOpeningKind: kind,
+          measureMode: kind ? false : get().measureMode,
           selectedFurnitureId: null,
           selectedOpeningId: null,
           showDoors: kind === "door" ? true : get().showDoors,
+        }),
+      setMeasureMode: (on) =>
+        set({
+          measureMode: on,
+          placingOpeningKind: on ? null : get().placingOpeningKind,
+          selectedFurnitureId: on ? null : get().selectedFurnitureId,
+          selectedOpeningId: on ? null : get().selectedOpeningId,
+          selectedRoomId: on ? null : get().selectedRoomId,
         }),
       addOpeningOnWall: (roomId, edge, kind, along) => {
         const { brief, plan } = get();
@@ -759,6 +771,7 @@ export const useStudioStore = create<StudioState>()(
           questionSource: null,
           pendingExport: null,
           placingOpeningKind: null,
+          measureMode: false,
           clipboard: null,
           past: [],
           future: [],

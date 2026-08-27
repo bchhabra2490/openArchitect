@@ -26,9 +26,8 @@ export function preciseSize(value: number): number {
 export function formatMeasure(meters: number, unit: DisplayUnit) {
   const value = metersToDisplay(meters, unit);
   if (!Number.isFinite(value)) return "0";
-  // Keep typed precision (up to 8 dp); strip trailing zeros / float noise.
-  const trimmed = String(parseFloat(value.toFixed(8)));
-  return trimmed;
+  const maxDecimals = unit === "ft" ? 2 : 8;
+  return String(parseFloat(value.toFixed(maxDecimals)));
 }
 
 export function formatLength(meters: number, unit: DisplayUnit) {

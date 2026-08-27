@@ -6,10 +6,11 @@ import {
   useLayoutEffect,
   useMemo,
   useRef,
+  useState,
   type PointerEvent,
   type ReactElement,
 } from "react";
-import { Scan } from "lucide-react";
+import { Ruler, Scan } from "lucide-react";
 import { CanvasInspector } from "@/components/studio/canvas-inspector";
 import { ExportButtons } from "@/components/studio/export-buttons";
 import { BlockSizeSlider } from "@/components/studio/block-size-slider";
@@ -183,6 +184,62 @@ function clientToMeters(clientX: number, clientY: number, svg: SVGSVGElement) {
     x: ((clientX - rect.left) / rect.width) * viewBox.width + viewBox.x,
     y: ((clientY - rect.top) / rect.height) * viewBox.height + viewBox.y,
   };
+}
+
+type MeasurePoint = { x: number; y: number };
+
+function measureDistance(a: MeasurePoint, b: MeasurePoint) {
+  return Math.hypot(b.x - a.x, b.y - a.y);
+}
+
+function MeasuringTapeOverlay({
+  start,
+  end,
+  preview,
+  displayUnit,
+}: {
+  start: MeasurePoint;
+  end: MeasurePoint;
+  preview?: boolean;
+  displayUnit: DisplayUnit;
+}) {
+  const distance = measureDistance(start, end);
+  const midX = (start.x + end.x) / 2;
+  const midY = (start.y + end.y) / 2;
+  const angle = (Math.atan2(end.y - start.y, end.x - start.x) * 180) / Math.PI;
+  const labelAngle = angle > 90 || angle < -90 ? angle + 180 : angle;
+  const label = formatLength(distance, displayUnit);
+
+  return (
+    <g className="pointer-events-none" aria-hidden>
+      <line
+        x1={start.x}
+        y1={start.y}
+        x2={end.x}
+        y2={end.y}
+        stroke="#c2410c"
+        strokeWidth={0.06}
+        strokeDasharray={preview ? "0.16 0.1" : undefined}
+        opacity={preview ? 0.85 : 1}
+      />
+      <circle cx={start.x} cy={start.y} r={0.09} fill="#c2410c" />
+      <circle cx={end.x} cy={end.y} r={0.09} fill="#c2410c" />
+      <text
+        x={midX}
+        y={midY - 0.16}
+        textAnchor="middle"
+        fontSize={0.32}
+        fontWeight={700}
+        fill="#9a3412"
+        stroke="#fff7ed"
+        strokeWidth={0.08}
+        paintOrder="stroke"
+        transform={`rotate(${labelAngle} ${midX} ${midY})`}
+      >
+        {label}
+      </text>
+    </g>
+  );
 }
 
 function edgeGeometry(room: Room, opening: Opening) {
@@ -614,12 +671,26 @@ function PlanSvg({
   selectedFurnitureId,
   selectedOpeningId,
   placingOpeningKind,
+  measureMode,
+  measureStart,
+  measureEnd,
+  measureHover,
+  onMeasureStartChange,
+  onMeasureEndChange,
+  onMeasureHoverChange,
 }: {
   plan: FloorPlan;
   selectedRoomId: string | null;
   selectedFurnitureId: string | null;
   selectedOpeningId: string | null;
   placingOpeningKind: OpeningKind | null;
+  measureMode: boolean;
+  measureStart: MeasurePoint | null;
+  measureEnd: MeasurePoint | null;
+  measureHover: MeasurePoint | null;
+  onMeasureStartChange: (point: MeasurePoint | null) => void;
+  onMeasureEndChange: (point: MeasurePoint | null) => void;
+  onMeasureHoverChange: (point: MeasurePoint | null) => void;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const drag = useRef<DragState | null>(null);
@@ -747,7 +818,7 @@ function PlanSvg({
       viewBox={`${-padW} ${-padN} ${width + padW + padE} ${height + padN + padS + 0.8}`}
       width={width + padW + padE}
       height={height + padN + padS + 0.8}
-      className="overflow-visible"
+      className={cn("overflow-visible", measureMode && "cursor-crosshair")}
       onPointerDown={(event) => {
         const target = event.target as Element;
         if (target.closest("[data-edit], [data-room]")) return;
@@ -774,7 +845,7 @@ function PlanSvg({
           fill={roomFill(room.type, showRoomColors, room.color)}
           onSelect={setSelectedRoomId}
           onMoveStart={(event) => {
-            if (placingOpeningKind) return;
+            if (placingOpeningKind || measureMode) return;
             const svg = svgRef.current;
             if (!svg) return;
             const meters = clientToMeters(event.clientX, event.clientY, svg);
@@ -851,7 +922,7 @@ function PlanSvg({
             selected={selectedOpeningId === opening.id}
             onSelect={setSelectedOpeningId}
             onMoveStart={(event) => {
-              if (placingOpeningKind) return;
+              if (placingOpeningKind || measureMode) return;
               const svg = svgRef.current;
               if (!svg) return;
               const meters = clientToMeters(event.clientX, event.clientY, svg);
@@ -865,7 +936,7 @@ function PlanSvg({
               });
             }}
             onResizeStart={(end) => {
-              if (placingOpeningKind) return;
+              if (placingOpeningKind || measureMode) return;
               startDrag({
                 type: "opening-resize",
                 openingId: opening.id,
@@ -928,6 +999,50 @@ function PlanSvg({
           N
         </text>
       </g>
+      {measureMode ? (
+        <rect
+          x={-padW}
+          y={-padN}
+          width={width + padW + padE}
+          height={height + padN + padS + 0.8}
+          fill="transparent"
+          className="cursor-crosshair"
+          onPointerDown={(event) => {
+            event.stopPropagation();
+            const svg = svgRef.current;
+            if (!svg) return;
+            const point = clientToMeters(event.clientX, event.clientY, svg);
+            if (!measureStart || measureEnd) {
+              onMeasureStartChange(point);
+              onMeasureEndChange(null);
+              onMeasureHoverChange(point);
+              return;
+            }
+            onMeasureEndChange(point);
+            onMeasureHoverChange(null);
+          }}
+          onPointerMove={(event) => {
+            if (!measureStart || measureEnd) return;
+            const svg = svgRef.current;
+            if (!svg) return;
+            onMeasureHoverChange(clientToMeters(event.clientX, event.clientY, svg));
+          }}
+        />
+      ) : null}
+      {measureStart && measureEnd ? (
+        <MeasuringTapeOverlay start={measureStart} end={measureEnd} displayUnit={displayUnit} />
+      ) : null}
+      {measureMode && measureStart && !measureEnd && measureHover ? (
+        <MeasuringTapeOverlay
+          start={measureStart}
+          end={measureHover}
+          preview
+          displayUnit={displayUnit}
+        />
+      ) : null}
+      {measureMode && measureStart && !measureEnd && !measureHover ? (
+        <circle cx={measureStart.x} cy={measureStart.y} r={0.09} fill="#c2410c" />
+      ) : null}
     </svg>
   );
 }
@@ -938,10 +1053,24 @@ export function FloorPlanCanvas() {
   const selectedFurnitureId = useStudioStore((state) => state.selectedFurnitureId);
   const selectedOpeningId = useStudioStore((state) => state.selectedOpeningId);
   const placingOpeningKind = useStudioStore((state) => state.placingOpeningKind);
+  const measureMode = useStudioStore((state) => state.measureMode);
+  const setMeasureMode = useStudioStore((state) => state.setMeasureMode);
+  const displayUnit = useStudioStore((state) => state.displayUnit);
+  const [measureStart, setMeasureStart] = useState<MeasurePoint | null>(null);
+  const [measureEnd, setMeasureEnd] = useState<MeasurePoint | null>(null);
+  const [measureHover, setMeasureHover] = useState<MeasurePoint | null>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const { offset, scale, centerView, onPointerDown, onPointerMove, onPointerUp } =
     useCanvasPanZoom(viewportRef);
   const { vbWidth, vbHeight } = planViewBox(plan);
+
+  useEffect(() => {
+    if (!measureMode) {
+      setMeasureStart(null);
+      setMeasureEnd(null);
+      setMeasureHover(null);
+    }
+  }, [measureMode]);
 
   const centerGrid = useCallback(() => {
     const el = viewportRef.current;
@@ -977,6 +1106,10 @@ export function FloorPlanCanvas() {
       if (event.key === "Escape") {
         if (state.placingOpeningKind) {
           state.setPlacingOpeningKind(null);
+          return;
+        }
+        if (state.measureMode) {
+          state.setMeasureMode(false);
           return;
         }
         state.clearSelection();
@@ -1053,6 +1186,13 @@ export function FloorPlanCanvas() {
             selectedFurnitureId={selectedFurnitureId}
             selectedOpeningId={selectedOpeningId}
             placingOpeningKind={placingOpeningKind}
+            measureMode={measureMode}
+            measureStart={measureStart}
+            measureEnd={measureEnd}
+            measureHover={measureHover}
+            onMeasureStartChange={setMeasureStart}
+            onMeasureEndChange={setMeasureEnd}
+            onMeasureHoverChange={setMeasureHover}
           />
         </div>
       </div>
@@ -1066,6 +1206,40 @@ export function FloorPlanCanvas() {
       <div className="pointer-events-none absolute top-3 left-3 flex flex-col items-start gap-2">
         <BlockSizeSlider />
         <LayerToggles className="pointer-events-auto rounded-xl bg-background/95 px-2 py-1.5 shadow-sm" />
+        <Button
+          type="button"
+          size="xs"
+          variant={measureMode ? "default" : "outline"}
+          className={cn(
+            "pointer-events-auto rounded-xl border shadow-sm",
+            measureMode ? "border-primary" : "bg-background/95",
+          )}
+          aria-pressed={measureMode}
+          aria-label={measureMode ? "Turn off measuring tape" : "Measure distance"}
+          title={
+            measureMode
+              ? "Measuring — click two points · Esc to cancel"
+              : "Measure distance between two points"
+          }
+          onClick={() => setMeasureMode(!measureMode)}
+        >
+          <Ruler data-icon="inline-start" />
+          Measure
+        </Button>
+        {measureMode && measureStart && measureEnd ? (
+          <p className="pointer-events-none max-w-52 rounded-xl border bg-background/95 px-2.5 py-1.5 text-[11px] text-foreground shadow-sm">
+            {formatLength(measureDistance(measureStart, measureEnd), displayUnit)}
+            <span className="text-muted-foreground">
+              {" "}
+              · Δ{formatLength(Math.abs(measureEnd.x - measureStart.x), displayUnit)} × Δ
+              {formatLength(Math.abs(measureEnd.y - measureStart.y), displayUnit)}
+            </span>
+          </p>
+        ) : measureMode ? (
+          <p className="pointer-events-none max-w-52 rounded-xl border bg-background/95 px-2.5 py-1.5 text-[11px] text-muted-foreground shadow-sm">
+            {measureStart ? "Click the end point" : "Click the start point"}
+          </p>
+        ) : null}
       </div>
       <div className="pointer-events-none absolute top-3 right-3">
         <ExportButtons />

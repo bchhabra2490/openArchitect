@@ -288,6 +288,8 @@ export function CanvasInspector() {
   const selectedFurnitureId = useStudioStore((state) => state.selectedFurnitureId);
   const selectedOpeningId = useStudioStore((state) => state.selectedOpeningId);
   const placingOpeningKind = useStudioStore((state) => state.placingOpeningKind);
+  const measureMode = useStudioStore((state) => state.measureMode);
+  const setMeasureMode = useStudioStore((state) => state.setMeasureMode);
   const replaceSelectedFurniture = useStudioStore(
     (state) => state.replaceSelectedFurniture,
   );
@@ -325,7 +327,23 @@ export function CanvasInspector() {
 
   let body: ReactNode;
 
-  if (furniture) {
+  if (measureMode) {
+    body = (
+      <div data-controls-panel className={panelClass}>
+        <p className="text-xs font-medium">
+          Measuring tape
+          <span className="ml-1 font-normal text-muted-foreground">
+            · click two points · click again for a new measure · Esc to exit
+          </span>
+        </p>
+        <div className="mt-2 flex gap-1">
+          <Button type="button" size="xs" variant="outline" onClick={() => setMeasureMode(false)}>
+            Done
+          </Button>
+        </div>
+      </div>
+    );
+  } else if (furniture) {
     body = (
       <div data-controls-panel className={cn(panelClass, "max-w-xl")}>
         <Input
